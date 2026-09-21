@@ -1,0 +1,49 @@
+{
+  "$schema": "https://unpkg.com/release-it@20/schema/release-it.json",
+  "git": {
+    "push": false,
+    "tagName": "v${version}",
+    "commitMessage": "release: v${version}"
+  },
+  "npm": {
+    "publish": false
+  },
+  "plugins": {
+    "@release-it/bumper": {
+      "out": [
+        {
+          "file": "src-tauri/Cargo.toml",
+          "type": "text/toml",
+          "path": "package.version"
+        },
+        {
+          "file": "src-tauri/tauri.conf.json",
+          "path": "version"
+        }
+      ]
+    },
+    "@release-it/conventional-changelog": {
+      "infile": "CHANGELOG.md",
+      "tagPrefix": "v",
+      "preset": {
+        "name": "conventionalcommits",
+        "types": [
+          { "type": "feat", "section": "✨ Features" },
+          { "type": "fix", "section": "🐛 Bug Fixes" },
+          { "type": "docs", "section": "📚 Documentation" },
+          { "type": "test", "section": "📝 Tests" },
+          { "type": "refactor", "section": "🚜 Code Refactoring" },
+          { "type": "perf", "section": "🚀 Performance Improvements" },
+          { "type": "ci", "section": "⚙️ Continuous Integration" },
+          { "type": "build", "section": "📦️ Builds" },
+          { "type": "style", "section": "🎨 Styles" },
+          { "type": "revert", "section": "🗑️ Reverts" },
+          { "type": "chore", "section": "Miscellaneous Tasks" }
+        ]
+      }
+    }
+  },
+  "hooks": {
+    "before:git:release": "pnpm format && cargo check --manifest-path src-tauri/Cargo.toml && git add src-tauri/Cargo.lock CHANGELOG.md package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json"
+  }
+}
