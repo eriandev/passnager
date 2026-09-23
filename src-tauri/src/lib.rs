@@ -1,4 +1,5 @@
 mod commands;
+mod crypto;
 mod db;
 
 use db::init_db;
@@ -13,6 +14,15 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::clipboard::copy_to_clipboard,
+            commands::master::is_master_configured,
+            commands::master::setup_master_password,
+            commands::master::verify_master_password,
+            commands::master::change_master_password,
+            commands::passwords::add_password,
+            commands::passwords::get_passwords,
+            commands::passwords::update_password,
+            commands::passwords::delete_password,
+            commands::passwords::decrypt_password_by_id,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
