@@ -1,3 +1,4 @@
 {
+  "css.customData": [".vscode/css_custom_tailwind.json"],
   "svelte.enable-ts-plugin": true
 }
