@@ -10,3 +10,6 @@ export interface InputProps extends HTMLInputAttributes {
   rightIcon?: Snippet<[]>
 }
 export type PasswordInputProps = Exclude<InputProps, 'rightIcon'>
+export interface SidebarProps {
+  currentPath?: string
+}
