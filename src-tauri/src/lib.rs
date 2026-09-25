@@ -23,6 +23,8 @@ pub fn run() {
             commands::passwords::update_password,
             commands::passwords::delete_password,
             commands::passwords::decrypt_password_by_id,
+            commands::settings::get_app_name,
+            commands::settings::get_app_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
