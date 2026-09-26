@@ -8,6 +8,7 @@ use tauri::Manager;
 pub struct DbConn(pub Mutex<Connection>);
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PasswordEntry {
     pub id: String,
     pub username: String,
@@ -26,6 +27,7 @@ pub struct Category {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Note {
     pub id: String,
     pub title: String,
