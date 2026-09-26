@@ -129,7 +129,7 @@ Release builds are generated automatically through GitHub Actions.
 
 ## 🗺️ Roadmap
 
-- [ ] Password categories
+- [x] Password categories
 - [ ] Password generator
 - [ ] Password strength analysis
 - [ ] Import / export
