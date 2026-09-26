@@ -14,3 +14,14 @@ export interface EntryPasswordProps extends EntryProps {
   url: string
   username: string
 }
+export interface EntryCategoryData {
+  name: string
+  icon?: string | null
+  color?: string | null
+}
+export interface EntryCategoryProps {
+  id: string
+  name: string
+  icon: string | null
+  color: string | null
+}

@@ -24,6 +24,10 @@ pub fn run() {
             commands::passwords::update_password,
             commands::passwords::delete_password,
             commands::passwords::decrypt_password_by_id,
+            commands::categories::add_category,
+            commands::categories::get_categories,
+            commands::categories::update_category,
+            commands::categories::delete_category,
             commands::settings::get_app_name,
             commands::settings::get_app_version,
         ])
