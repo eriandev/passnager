@@ -1,4 +1,4 @@
-use tauri::{AppHandle};
+use tauri::AppHandle;
 
 #[tauri::command]
 pub fn get_app_name(app: AppHandle) -> Result<String, String> {

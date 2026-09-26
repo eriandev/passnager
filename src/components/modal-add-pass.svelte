@@ -107,9 +107,7 @@
     </span>
 
     <section class="flex justify-end gap-x-3">
-      <AlertDialog.Cancel type="button" class="btn secondary" disabled={submitting}>
-        Cancel
-      </AlertDialog.Cancel>
+      <AlertDialog.Cancel type="button" class="btn secondary" disabled={submitting}>Cancel</AlertDialog.Cancel>
       <AlertDialog.Action type="submit" class="btn primary" disabled={submitting}>
         {submitting ? 'Adding...' : 'Add password'}
       </AlertDialog.Action>
