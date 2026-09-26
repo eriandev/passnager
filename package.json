@@ -12,8 +12,10 @@
     "format": "prettier --write .",
     "prepare": "svelte-kit sync || echo ''",
     "lint": "prettier --check . && eslint 'src/**/*.{svelte,ts,js}'",
+    "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "tauri:build:windows": "tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc"
   },
   "license": "MIT",
   "dependencies": {
