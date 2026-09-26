@@ -65,6 +65,7 @@
             autocomplete="off"
             bind:value={password}
             placeholder="At least 8 characters"
+            disabled={loading}
           />
 
           <PasswordInput
@@ -72,6 +73,7 @@
             id="confirm-new-password"
             bind:value={confirmPassword}
             placeholder="Repeat the password"
+            disabled={loading}
           />
         </div>
 

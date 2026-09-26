@@ -53,7 +53,13 @@
       </header>
 
       <section class="grid gap-y-4">
-        <PasswordInput id="password" autocomplete="off" bind:value={password} placeholder="Master password" />
+        <PasswordInput
+          id="password"
+          autocomplete="off"
+          bind:value={password}
+          placeholder="Master password"
+          disabled={loading}
+        />
 
         <span class={['min-h-4 text-xs font-bold text-destructive', { invisible: !error }]}>
           {error}

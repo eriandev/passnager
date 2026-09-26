@@ -14,6 +14,7 @@
   let formName = $state('')
   let formIcon = $state('')
   let formError = $state('')
+  let submitting = $state(false)
   let formColor = $state('#3EE0CF')
 
   $effect(() => {
@@ -27,6 +28,8 @@
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
+
+    if (submitting) return
     formError = ''
 
     if (!formName.trim()) {
@@ -34,12 +37,15 @@
       return
     }
 
+    submitting = true
     try {
       await categories.add({ name: formName, icon: formIcon || null, color: formColor })
       toast.success('Category created')
       open = false
     } catch (err) {
       formError = String(err)
+    } finally {
+      submitting = false
     }
   }
 </script>
@@ -86,8 +92,12 @@
     </span>
 
     <section class="flex justify-end gap-x-3">
-      <AlertDialog.Cancel type="button" class="btn secondary">Cancel</AlertDialog.Cancel>
-      <AlertDialog.Action type="submit" class="btn primary">Create category</AlertDialog.Action>
+      <AlertDialog.Cancel type="button" class="btn secondary" disabled={submitting}>
+        Cancel
+      </AlertDialog.Cancel>
+      <AlertDialog.Action type="submit" class="btn primary" disabled={submitting}>
+        {submitting ? 'Adding...' : 'Create category'}
+      </AlertDialog.Action>
     </section>
   </form>
 </Modal>

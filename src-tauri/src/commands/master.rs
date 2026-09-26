@@ -35,47 +35,67 @@ pub fn is_master_configured(state: State<'_, DbConn>) -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub fn setup_master_password(
+pub async fn setup_master_password(
     db: State<'_, DbConn>,
     session: State<'_, Session>,
     password: String,
 ) -> Result<bool, String> {
-    let conn = db.0.lock().unwrap();
-
-    let count: i32 = conn
-        .query_row("SELECT COUNT(*) FROM master_password", [], |row| row.get(0))
-        .map_err(|e| e.to_string())?;
+    let count: i32 = {
+        let conn = db.0.lock().unwrap();
+        conn.query_row("SELECT COUNT(*) FROM master_password", [], |row| row.get(0))
+            .map_err(|e| e.to_string())?
+    };
 
     if count > 0 {
         return Err("Master password already configured".to_string());
     }
 
-    let salt = crypto::generate_salt();
-    let kek = Zeroizing::new(crypto::derive_kek(password.as_bytes(), &salt)?);
-    let dek = crypto::generate_dek();
-    let (wrapped_dek, dek_nonce) = crypto::wrap_dek(&dek, &kek)?;
+    let password_bytes = password.into_bytes();
 
-    conn.execute(
-        "INSERT INTO master_password (id, salt, wrapped_dek, dek_nonce) VALUES (1, ?1, ?2, ?3)",
-        rusqlite::params![salt, wrapped_dek, dek_nonce],
+    let (salt, dek, wrapped_dek, dek_nonce) = tauri::async_runtime::spawn_blocking(
+        move || -> Result<([u8; 16], [u8; 32], Vec<u8>, Vec<u8>), String> {
+            let salt = crypto::generate_salt();
+            let kek = Zeroizing::new(crypto::derive_kek(&password_bytes, &salt)?);
+            let dek = crypto::generate_dek();
+            let (wrapped_dek, dek_nonce) = crypto::wrap_dek(&dek, &kek)?;
+            Ok((salt, dek, wrapped_dek, dek_nonce))
+        },
     )
-    .map_err(|e| e.to_string())?;
+    .await
+    .map_err(|e| e.to_string())??;
+
+    {
+        let conn = db.0.lock().unwrap();
+        conn.execute(
+            "INSERT INTO master_password (id, salt, wrapped_dek, dek_nonce) VALUES (1, ?1, ?2, ?3)",
+            rusqlite::params![salt, wrapped_dek, dek_nonce],
+        )
+        .map_err(|e| e.to_string())?;
+    }
 
     set_session_dek(&session, dek);
     Ok(true)
 }
 
 #[tauri::command]
-pub fn verify_master_password(
+pub async fn verify_master_password(
     db: State<'_, DbConn>,
     session: State<'_, Session>,
     password: String,
 ) -> Result<bool, String> {
-    let conn = db.0.lock().unwrap();
-    let info = get_master_info(&conn)?;
+    let info = {
+        let conn = db.0.lock().unwrap();
+        get_master_info(&conn)?
+    };
 
-    let kek = Zeroizing::new(crypto::derive_kek(password.as_bytes(), &info.salt)?);
-    let dek = crypto::unwrap_dek(&info.wrapped_dek, &info.dek_nonce, &kek)?;
+    let password_bytes = password.into_bytes();
+
+    let dek = tauri::async_runtime::spawn_blocking(move || -> Result<[u8; 32], String> {
+        let kek = Zeroizing::new(crypto::derive_kek(&password_bytes, &info.salt)?);
+        crypto::unwrap_dek(&info.wrapped_dek, &info.dek_nonce, &kek)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
 
     set_session_dek(&session, dek);
     Ok(true)
@@ -89,30 +109,45 @@ pub fn lock_session(state: State<'_, Session>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn change_master_password(
-    state: State<'_, DbConn>,
+pub async fn change_master_password(
+    db: State<'_, DbConn>,
     old_password: String,
     new_password: String,
 ) -> Result<(), String> {
-    let conn = state.0.lock().unwrap();
-    let info = get_master_info(&conn)?;
+    let info = {
+        let conn = db.0.lock().unwrap();
+        get_master_info(&conn)?
+    };
 
-    let old_kek = Zeroizing::new(crypto::derive_kek(old_password.as_bytes(), &info.salt)?);
-    let dek = Zeroizing::new(crypto::unwrap_dek(
-        &info.wrapped_dek,
-        &info.dek_nonce,
-        &old_kek,
-    )?);
+    let old_bytes = old_password.into_bytes();
+    let new_bytes = new_password.into_bytes();
 
-    let new_salt = crypto::generate_salt();
-    let new_kek = Zeroizing::new(crypto::derive_kek(new_password.as_bytes(), &new_salt)?);
-    let (new_wrapped, new_nonce) = crypto::wrap_dek(&dek, &new_kek)?;
+    let (new_salt, new_wrapped, new_nonce) = tauri::async_runtime::spawn_blocking(
+        move || -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), String> {
+            let old_kek = Zeroizing::new(crypto::derive_kek(&old_bytes, &info.salt)?);
+            let dek = Zeroizing::new(crypto::unwrap_dek(
+                &info.wrapped_dek,
+                &info.dek_nonce,
+                &old_kek,
+            )?);
 
-    conn.execute(
-        "UPDATE master_password SET salt = ?1, wrapped_dek = ?2, dek_nonce = ?3 WHERE id = 1",
-        rusqlite::params![new_salt, new_wrapped, new_nonce],
+            let new_salt = crypto::generate_salt();
+            let new_kek = Zeroizing::new(crypto::derive_kek(&new_bytes, &new_salt)?);
+            let (new_wrapped, new_nonce) = crypto::wrap_dek(&dek, &new_kek)?;
+            Ok((new_salt.to_vec(), new_wrapped, new_nonce))
+        },
     )
-    .map_err(|e| e.to_string())?;
+    .await
+    .map_err(|e| e.to_string())??;
+
+    {
+        let conn = db.0.lock().unwrap();
+        conn.execute(
+            "UPDATE master_password SET salt = ?1, wrapped_dek = ?2, dek_nonce = ?3 WHERE id = 1",
+            rusqlite::params![new_salt, new_wrapped, new_nonce],
+        )
+        .map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }

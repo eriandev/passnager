@@ -14,7 +14,7 @@ fn get_dek(session: &State<'_, Session>) -> Result<Zeroizing<[u8; 32]>, String> 
 }
 
 #[tauri::command]
-pub fn add_password(
+pub async fn add_password(
     db: State<'_, DbConn>,
     session: State<'_, Session>,
     username: String,
@@ -83,7 +83,7 @@ pub fn get_passwords(
 }
 
 #[tauri::command]
-pub fn update_password(
+pub async fn update_password(
     db: State<'_, DbConn>,
     session: State<'_, Session>,
     id: String,
@@ -123,7 +123,7 @@ pub fn delete_password(state: State<'_, DbConn>, id: String) -> Result<(), Strin
 }
 
 #[tauri::command]
-pub fn decrypt_password_by_id(
+pub async fn decrypt_password_by_id(
     db: State<'_, DbConn>,
     session: State<'_, Session>,
     id: String,

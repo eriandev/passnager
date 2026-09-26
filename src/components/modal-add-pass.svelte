@@ -17,6 +17,7 @@
   let formError = $state('')
   let formUsername = $state('')
   let formPassword = $state('')
+  let submitting = $state(false)
   let formCategoryId = $state('')
 
   const categoryItems = $derived([
@@ -36,6 +37,8 @@
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
+
+    if (submitting) return
     formError = ''
 
     if (!formUsername.trim()) {
@@ -51,6 +54,7 @@
       return
     }
 
+    submitting = true
     try {
       await passwords.add({
         url: formUrl,
@@ -62,6 +66,8 @@
       open = false
     } catch (err) {
       formError = String(err)
+    } finally {
+      submitting = false
     }
   }
 </script>
@@ -101,8 +107,12 @@
     </span>
 
     <section class="flex justify-end gap-x-3">
-      <AlertDialog.Cancel type="button" class="btn secondary">Cancel</AlertDialog.Cancel>
-      <AlertDialog.Action type="submit" class="btn primary">Add password</AlertDialog.Action>
+      <AlertDialog.Cancel type="button" class="btn secondary" disabled={submitting}>
+        Cancel
+      </AlertDialog.Cancel>
+      <AlertDialog.Action type="submit" class="btn primary" disabled={submitting}>
+        {submitting ? 'Adding...' : 'Add password'}
+      </AlertDialog.Action>
     </section>
   </form>
 </Modal>

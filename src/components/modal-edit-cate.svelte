@@ -16,6 +16,7 @@
   let formIcon = $state('')
   let formError = $state('')
   let formColor = $state('')
+  let submitting = $state(false)
   let formCategoryId = $state('')
 
   $effect(() => {
@@ -25,13 +26,13 @@
       formCategoryId = entry.id
       formIcon = entry.icon || ''
       formColor = entry.color || '#3EE0CF'
-
-      $inspect({ open, entry })
     }
   })
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
+
+    if (submitting) return
     formError = ''
 
     if (!entry) return
@@ -40,12 +41,15 @@
       return
     }
 
+    submitting = true
     try {
       await categories.update(formCategoryId, { name: formName, icon: formIcon || null, color: formColor })
       toast.success('Category updated')
       open = false
     } catch (err) {
       formError = String(err)
+    } finally {
+      submitting = false
     }
   }
 </script>
@@ -92,8 +96,12 @@
     </span>
 
     <section class="flex justify-end gap-x-3">
-      <AlertDialog.Cancel type="button" class="btn secondary">Cancel</AlertDialog.Cancel>
-      <AlertDialog.Action type="submit" class="btn primary">Save changes</AlertDialog.Action>
+      <AlertDialog.Cancel type="button" class="btn secondary" disabled={submitting}>
+        Cancel
+      </AlertDialog.Cancel>
+      <AlertDialog.Action type="submit" class="btn primary" disabled={submitting}>
+        {submitting ? 'Saving...' : 'Save changes'}
+      </AlertDialog.Action>
     </section>
   </form>
 </Modal>
