@@ -6,11 +6,12 @@
   import GlobeSimple from 'phosphor-svelte/lib/GlobeSimpleIcon'
   import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
   import { usePasswords } from '$lib/password.svelte'
-  import type { PasswordCardProps } from '@/components/types'
+  import type { CardProps } from '@/components/types'
+  import type { EntryPasswordProps } from '@/lib/types'
 
   const passwords = usePasswords()
 
-  let { entry, onedit, ondelete }: PasswordCardProps = $props()
+  let { entry, onedit, ondelete }: CardProps<EntryPasswordProps> = $props()
 
   function getDomain(url: string): string {
     try {

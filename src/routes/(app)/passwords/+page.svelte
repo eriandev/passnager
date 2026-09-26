@@ -5,7 +5,9 @@
   import Input from '@/components/input.svelte'
   import Alert from '@/components/alert.svelte'
   import Button from '@/components/button.svelte'
+  import Select from '@/components/select.svelte'
   import { usePasswords } from '$lib/password.svelte'
+  import { useCategories } from '$lib/category.svelte'
   import PasswordCard from '@/components/password-card.svelte'
   import ModalAddPass from '@/components/modal-add-pass.svelte'
   import ModalEditPass from '@/components/modal-edit-pass.svelte'
@@ -13,8 +15,10 @@
 
   const auth = useAuth()
   const passwords = usePasswords()
+  const categories = useCategories()
 
   let query = $state('')
+  let filterCategory = $state('')
   let deleteTargetId = $state('')
   let showAddModal = $state(false)
   let showEditModal = $state(false)
@@ -34,9 +38,12 @@
 
   $effect(() => {
     if (auth.isUnlocked) {
-      passwords.load().then((ok) => {
-        if (!ok) toast.error('Failed to load passwords')
-      })
+      Promise.allSettled([
+        categories.load(),
+        passwords.load(filterCategory || undefined).then((ok) => {
+          if (!ok) toast.error('Failed to load passwords')
+        }),
+      ])
     }
   })
 
@@ -55,7 +62,6 @@
   }
 
   async function handleDelete() {
-    console.log({ deleteTargetId })
     if (!deleteTargetId) return
     try {
       await passwords.remove(deleteTargetId)
@@ -72,15 +78,30 @@
     <h1 class="text-3xl font-bold text-foreground">Passwords</h1>
   </header>
 
-  <section>
-    <Input bind:value={query} placeholder="Search by username or URL" />
+  <section class="flex items-center gap-3">
+    <div class="min-w-0 flex-1">
+      <Input bind:value={query} placeholder="Search by username or URL" />
+    </div>
+    <div class="w-52 shrink-0">
+      <Select
+        bind:value={filterCategory}
+        placeholder="All categories"
+        items={[
+          { label: 'All categories', value: '' },
+          ...categories.list.map((c) => ({ label: c.icon + ' ' + c.name, value: c.id })),
+        ]}
+        onValueChange={(v) => (filterCategory = v ?? '')}
+      />
+    </div>
   </section>
 
   <section class="w-full h-full relative min-h-0 overflow-y-auto">
     {#if passwords.loading}
       <div class="grid h-full place-content-center text-foreground-alt">Loading...</div>
     {:else if passwords.list.length === 0}
-      <div class="grid h-full place-content-center text-foreground-alt">No passwords saved yet. Add one!</div>
+      <div class="grid h-full place-content-center text-foreground-alt">
+        {filterCategory ? 'No passwords in this category' : 'No passwords saved yet. Add one!'}
+      </div>
     {:else if filtered.length === 0}
       <div class="grid h-full place-content-center text-foreground-alt">No results found</div>
     {:else}

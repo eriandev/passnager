@@ -5,11 +5,13 @@
   import Modal from '@/components/modal.svelte'
   import Select from '@/components/select.svelte'
   import { usePasswords } from '$lib/password.svelte'
-  import type { ModalAddPassProps } from '@/components/types'
+  import { useCategories } from '$lib/category.svelte'
+  import type { ModalAddProps } from '@/components/types'
 
   const passwords = usePasswords()
+  const categories = useCategories()
 
-  let { open = $bindable(false) }: ModalAddPassProps = $props()
+  let { open = $bindable(false) }: ModalAddProps = $props()
 
   let formUrl = $state('')
   let formError = $state('')
@@ -17,9 +19,10 @@
   let formPassword = $state('')
   let formCategoryId = $state('')
 
-  const categoryItems = [
+  const categoryItems = $derived([
     { label: 'No category', value: '' },
-  ]
+    ...categories.list.map((category) => ({ label: category.name, value: category.id })),
+  ])
 
   $effect(() => {
     if (open) {

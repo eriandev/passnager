@@ -1,11 +1,7 @@
 import type { Snippet } from 'svelte'
 import type { ButtonRootProps } from 'bits-ui'
 import type { HTMLInputAttributes } from 'svelte/elements'
-import type { EntryPasswordProps } from '$lib/types'
 
-export type ButtonProps = ButtonRootProps & {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost'
-}
 export interface AlertProps {
   open: boolean
   title: string
@@ -16,16 +12,24 @@ export interface AlertProps {
     action?: () => void
   }>
 }
+export type ButtonProps = ButtonRootProps & {
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost'
+}
+export interface CardProps<T> {
+  entry: T
+  onedit: (entry: T) => void
+  ondelete: (id: string) => void
+}
 export interface InputProps extends HTMLInputAttributes {
   leftIcon?: Snippet
   rightIcon?: Snippet
 }
-export interface ModalAddPassProps {
+export interface ModalAddProps {
   open: boolean
 }
-export interface ModalEditPassProps {
+export interface ModalEditProps<T> {
   open: boolean
-  entry: EntryPasswordProps | null
+  entry: T | null
 }
 export interface ModalProps {
   open: boolean
@@ -33,11 +37,6 @@ export interface ModalProps {
   closeable?: boolean
   description?: string
   children: Snippet
-}
-export interface PasswordCardProps {
-  entry: EntryPasswordProps
-  onedit: (entry: EntryPasswordProps) => void
-  ondelete: (id: string) => void
 }
 export type PasswordInputProps = Exclude<InputProps, 'rightIcon'>
 export interface SelectProps {

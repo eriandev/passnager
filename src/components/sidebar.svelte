@@ -1,5 +1,6 @@
 <script lang="ts">
   import Key from 'phosphor-svelte/lib/KeyIcon'
+  import Folder from 'phosphor-svelte/lib/FolderIcon'
   import GearSix from 'phosphor-svelte/lib/GearSixIcon'
   import LockKey from 'phosphor-svelte/lib/LockKeyIcon'
   import LockKeyOpen from 'phosphor-svelte/lib/LockKeyOpenIcon'
@@ -12,7 +13,10 @@
   const auth = useAuth()
   const navigate = useNavigation()
   const settingsPath = '/settings'
-  const navItems = [{ path: '/passwords', label: 'Passwords', icon: Key }] as const
+  const navItems = [
+    { path: '/passwords', label: 'Passwords', icon: Key },
+    { path: '/categories', label: 'Categories', icon: Folder },
+  ] as const
 
   let { currentPath = '/' }: SidebarProps = $props()
 
