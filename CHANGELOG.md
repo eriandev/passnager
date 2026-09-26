@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.1](https://github.com/eriandev/passnager/compare/v0.1.0...v0.1.1) (2026-09-26)
+
+### 🐛 Bug Fixes
+
+- correct max width on `setup` page ([049139d](https://github.com/eriandev/passnager/commit/049139d275d631066af74afa4281edab0fbc1bc2))
+- remove body vertical scroll ([57cbc5c](https://github.com/eriandev/passnager/commit/57cbc5c6b43538a7e0b65e6546cc05d3a30b83a0))
+- remove components that don't exist ([d6304a0](https://github.com/eriandev/passnager/commit/d6304a056cda98577e2cffa02aa8db54a7aca610))
+- update favicon ([d1a6bee](https://github.com/eriandev/passnager/commit/d1a6bee06c68eb567d277fdcb1f6cb8913c77578))
+
+### 📚 Documentation
+
+- add preview image ([4657308](https://github.com/eriandev/passnager/commit/465730888b6ab3ae90857750eedf8c63c4ced70b))
+
+### ⚙️ Continuous Integration
+
+- fix pnpm setup on action target Windows ([a93f315](https://github.com/eriandev/passnager/commit/a93f315855f527042168a4f2c4d8d0d3478956d7))
+
 ## 0.1.0 (2026-09-26)
 
 ### ✨ Features
