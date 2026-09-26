@@ -1,5 +1,5 @@
-import type { Snippet } from 'svelte'
 import type { ButtonRootProps } from 'bits-ui'
+import type { Component, Snippet } from 'svelte'
 import type { HTMLInputAttributes } from 'svelte/elements'
 
 export interface AlertProps {
@@ -14,6 +14,12 @@ export interface AlertProps {
 }
 export type ButtonProps = ButtonRootProps & {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost'
+}
+export interface CardAction {
+  title: string
+  icon?: Component
+  danger?: boolean
+  action?: () => void
 }
 export interface CardProps<T> {
   entry: T

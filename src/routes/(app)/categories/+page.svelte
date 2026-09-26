@@ -4,7 +4,7 @@
   import Plus from 'phosphor-svelte/lib/PlusIcon'
   import Alert from '@/components/alert.svelte'
   import Button from '@/components/button.svelte'
-  import CategoryCard from '@/components/category-card.svelte'
+  import CategoryCard from '@/components/card-category.svelte'
   import ModalAddCate from '@/components/modal-add-cate.svelte'
   import ModalEditCate from '@/components/modal-edit-cate.svelte'
   import { useCategories } from '$lib/category.svelte'

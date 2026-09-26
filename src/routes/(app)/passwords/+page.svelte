@@ -8,7 +8,7 @@
   import Select from '@/components/select.svelte'
   import { usePasswords } from '$lib/password.svelte'
   import { useCategories } from '$lib/category.svelte'
-  import PasswordCard from '@/components/password-card.svelte'
+  import PasswordCard from '@/components/card-password.svelte'
   import ModalAddPass from '@/components/modal-add-pass.svelte'
   import ModalEditPass from '@/components/modal-edit-pass.svelte'
   import type { EntryPasswordProps } from '$lib/types'
