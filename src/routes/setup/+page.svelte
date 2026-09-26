@@ -1,7 +1,6 @@
 <script lang="ts">
   import { toast } from 'svelte-sonner'
   import { useAuth } from '$lib/auth.svelte'
-  import Label from '@/components/label.svelte'
   import Button from '@/components/button.svelte'
   import LockKey from 'phosphor-svelte/lib/LockKeyIcon'
   import { useNavigation } from '$lib/navigation.svelte'
@@ -76,9 +75,9 @@
           />
         </div>
 
-        <Label class={['text-xs text-destructive min-h-4', { invisible: !error }]}>
+        <span class={['min-h-4 text-xs font-bold text-destructive', { invisible: !error }]}>
           {error}
-        </Label>
+        </span>
 
         <Button type="submit" disabled={loading} class="w-full">
           {loading ? 'Setting up...' : 'Set master password'}
