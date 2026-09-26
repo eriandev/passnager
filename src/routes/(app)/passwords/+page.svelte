@@ -14,11 +14,23 @@
   const auth = useAuth()
   const passwords = usePasswords()
 
+  let query = $state('')
   let deleteTargetId = $state('')
   let showAddModal = $state(false)
   let showEditModal = $state(false)
   let showDeleteAlert = $state(false)
   let editingEntry = $state<EntryPasswordProps | null>(null)
+
+  const searchTerm = $derived(query.trim().toLocaleLowerCase())
+  const filtered = $derived(
+    searchTerm
+      ? passwords.list.filter(
+          (entry) =>
+            entry.username.toLocaleLowerCase().includes(searchTerm) ||
+            entry.url.toLocaleLowerCase().includes(searchTerm),
+        )
+      : passwords.list,
+  )
 
   $effect(() => {
     if (auth.isUnlocked) {
@@ -61,7 +73,7 @@
   </header>
 
   <section>
-    <Input placeholder="Search by username or URL" />
+    <Input bind:value={query} placeholder="Search by username or URL" />
   </section>
 
   <section class="w-full h-full relative min-h-0 overflow-y-auto">
@@ -69,9 +81,11 @@
       <div class="grid h-full place-content-center text-foreground-alt">Loading...</div>
     {:else if passwords.list.length === 0}
       <div class="grid h-full place-content-center text-foreground-alt">No passwords saved yet. Add one!</div>
+    {:else if filtered.length === 0}
+      <div class="grid h-full place-content-center text-foreground-alt">No results found</div>
     {:else}
       <div class="flex flex-col gap-3">
-        {#each passwords.list as entry (entry.id)}
+        {#each filtered as entry (entry.id)}
           <PasswordCard {entry} onedit={openEdit} ondelete={confirmDelete} />
         {/each}
       </div>
