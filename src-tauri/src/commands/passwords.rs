@@ -1,5 +1,5 @@
 use crate::crypto;
-use crate::db::{DbConn, PasswordEntry};
+use crate::db::{unix_timestamp, DbConn, PasswordEntry};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use tauri::State;
 use uuid::Uuid;
@@ -31,7 +31,7 @@ pub fn add_password(
     let (encrypted, nonce) = crypto::encrypt_password(password.as_bytes(), &dek)?;
 
     let id = Uuid::new_v4().to_string();
-    let now = chrono_now();
+    let now = unix_timestamp();
 
     conn.execute(
         "INSERT INTO passwords (id, username, encrypted_password, nonce, url, category_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -96,7 +96,7 @@ pub fn update_password(
     dek_base64: String,
 ) -> Result<(), String> {
     let conn = state.0.lock().unwrap();
-    let now = chrono_now();
+    let now = unix_timestamp();
 
     if let Some(ref pwd) = password {
         let dek = decode_dek(&dek_base64)?;
@@ -145,12 +145,4 @@ pub fn decrypt_password_by_id(
     let plaintext = crypto::decrypt_password(&encrypted, &nonce, &dek)?;
 
     String::from_utf8(plaintext).map_err(|e| e.to_string())
-}
-
-fn chrono_now() -> String {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-    format!("{}", now)
 }

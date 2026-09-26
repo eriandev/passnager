@@ -110,3 +110,11 @@ pub fn init_db(app: &AppHandle) -> SqlResult<()> {
     app.manage(DbConn(Mutex::new(conn)));
     Ok(())
 }
+
+pub fn unix_timestamp() -> String {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs())
+        .unwrap_or_default()
+        .to_string()
+}
