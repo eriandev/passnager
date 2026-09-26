@@ -5,11 +5,9 @@
   import Modal from '@/components/modal.svelte'
   import Select from '@/components/select.svelte'
   import { usePasswords } from '$lib/password.svelte'
-  import { useCategories } from '$lib/category.svelte'
   import type { ModalEditPassProps } from '@/components/types'
 
   const passwords = usePasswords()
-  const categories = useCategories()
 
   let { open = $bindable(false), entry = null }: ModalEditPassProps = $props()
 
@@ -19,10 +17,9 @@
   let formPassword = $state('')
   let formCategoryId = $state('')
 
-  const categoryItems = $derived([
-    { value: '', label: 'No category' },
-    ...categories.list.map((c) => ({ value: c.id, label: c.name })),
-  ])
+  const categoryItems = [
+    { label: 'No category', value: '' },
+  ]
 
   $effect(() => {
     if (open && entry) {
@@ -31,7 +28,6 @@
       formUrl = entry.url
       formUsername = entry.username
       formCategoryId = entry.categoryId || ''
-      categories.load()
     }
   })
 
