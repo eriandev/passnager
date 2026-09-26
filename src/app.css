@@ -278,4 +278,20 @@
   .link {
     @apply inline-flex items-center gap-1 rounded-xs font-medium underline underline-offset-4 hover:text-foreground/80 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden;
   }
+
+  .btn {
+    @apply inline-flex h-input w-full cursor-pointer items-center justify-center rounded-input px-5 text-base font-semibold shadow-mini transition-all focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden active:scale-98 disabled:active:scale-100;
+
+    &.primary {
+      @apply bg-dark text-background hover:bg-dark/95 focus-visible:ring-dark focus-visible:ring-offset-background;
+    }
+
+    &.secondary {
+      @apply bg-muted hover:bg-dark-10 focus-visible:ring-foreground focus-visible:ring-offset-background;
+    }
+
+    &.danger {
+      @apply bg-destructive/80 hover:bg-destructive/70;
+    }
+  }
 }
