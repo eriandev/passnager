@@ -29,13 +29,9 @@ The project is built with **SvelteKit + Tauri 2**, combining a modern web UI wit
 
 ## 🖥️ Preview
 
-> Screenshots coming soon.
-
-<!--
 <p align="center">
-  <img src="./docs/screenshots/passwords.png" alt="Passnager passwords" width="800" />
+  <img src="./static/preview.webp" alt="Passnager passwords" width="800" />
 </p>
--->
 
 ## 🔐 Security
 
