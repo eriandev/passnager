@@ -1,7 +1,7 @@
 use crate::crypto;
-use crate::db::{DbConn, MasterPasswordInfo};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use crate::db::{DbConn, MasterPasswordInfo, Session};
 use tauri::State;
+use zeroize::Zeroizing;
 
 fn get_master_info(conn: &rusqlite::Connection) -> Result<MasterPasswordInfo, String> {
     conn.query_row(
@@ -18,6 +18,11 @@ fn get_master_info(conn: &rusqlite::Connection) -> Result<MasterPasswordInfo, St
     .map_err(|e| e.to_string())
 }
 
+fn set_session_dek(session: &State<'_, Session>, dek: [u8; 32]) {
+    let mut guard = session.0.lock().unwrap();
+    *guard = Some(Zeroizing::new(dek));
+}
+
 #[tauri::command]
 pub fn is_master_configured(state: State<'_, DbConn>) -> Result<bool, String> {
     let conn = state.0.lock().unwrap();
@@ -31,10 +36,11 @@ pub fn is_master_configured(state: State<'_, DbConn>) -> Result<bool, String> {
 
 #[tauri::command]
 pub fn setup_master_password(
-    state: State<'_, DbConn>,
+    db: State<'_, DbConn>,
+    session: State<'_, Session>,
     password: String,
-) -> Result<String, String> {
-    let conn = state.0.lock().unwrap();
+) -> Result<bool, String> {
+    let conn = db.0.lock().unwrap();
 
     let count: i32 = conn
         .query_row("SELECT COUNT(*) FROM master_password", [], |row| row.get(0))
@@ -45,7 +51,7 @@ pub fn setup_master_password(
     }
 
     let salt = crypto::generate_salt();
-    let kek = crypto::derive_kek(password.as_bytes(), &salt)?;
+    let kek = Zeroizing::new(crypto::derive_kek(password.as_bytes(), &salt)?);
     let dek = crypto::generate_dek();
     let (wrapped_dek, dek_nonce) = crypto::wrap_dek(&dek, &kek)?;
 
@@ -55,21 +61,31 @@ pub fn setup_master_password(
     )
     .map_err(|e| e.to_string())?;
 
-    Ok(BASE64.encode(dek))
+    set_session_dek(&session, dek);
+    Ok(true)
 }
 
 #[tauri::command]
 pub fn verify_master_password(
-    state: State<'_, DbConn>,
+    db: State<'_, DbConn>,
+    session: State<'_, Session>,
     password: String,
-) -> Result<String, String> {
-    let conn = state.0.lock().unwrap();
+) -> Result<bool, String> {
+    let conn = db.0.lock().unwrap();
     let info = get_master_info(&conn)?;
 
-    let kek = crypto::derive_kek(password.as_bytes(), &info.salt)?;
+    let kek = Zeroizing::new(crypto::derive_kek(password.as_bytes(), &info.salt)?);
     let dek = crypto::unwrap_dek(&info.wrapped_dek, &info.dek_nonce, &kek)?;
 
-    Ok(BASE64.encode(dek))
+    set_session_dek(&session, dek);
+    Ok(true)
+}
+
+#[tauri::command]
+pub fn lock_session(state: State<'_, Session>) -> Result<(), String> {
+    let mut guard = state.0.lock().unwrap();
+    *guard = None;
+    Ok(())
 }
 
 #[tauri::command]
@@ -81,11 +97,15 @@ pub fn change_master_password(
     let conn = state.0.lock().unwrap();
     let info = get_master_info(&conn)?;
 
-    let old_kek = crypto::derive_kek(old_password.as_bytes(), &info.salt)?;
-    let dek = crypto::unwrap_dek(&info.wrapped_dek, &info.dek_nonce, &old_kek)?;
+    let old_kek = Zeroizing::new(crypto::derive_kek(old_password.as_bytes(), &info.salt)?);
+    let dek = Zeroizing::new(crypto::unwrap_dek(
+        &info.wrapped_dek,
+        &info.dek_nonce,
+        &old_kek,
+    )?);
 
     let new_salt = crypto::generate_salt();
-    let new_kek = crypto::derive_kek(new_password.as_bytes(), &new_salt)?;
+    let new_kek = Zeroizing::new(crypto::derive_kek(new_password.as_bytes(), &new_salt)?);
     let (new_wrapped, new_nonce) = crypto::wrap_dek(&dek, &new_kek)?;
 
     conn.execute(

@@ -18,6 +18,7 @@ pub fn run() {
             commands::master::setup_master_password,
             commands::master::verify_master_password,
             commands::master::change_master_password,
+            commands::master::lock_session,
             commands::passwords::add_password,
             commands::passwords::get_passwords,
             commands::passwords::update_password,

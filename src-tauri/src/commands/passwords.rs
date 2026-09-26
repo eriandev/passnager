@@ -1,32 +1,29 @@
 use crate::crypto;
-use crate::db::{unix_timestamp, DbConn, PasswordEntry};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use crate::db::{unix_timestamp, DbConn, PasswordEntry, Session};
 use tauri::State;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
-fn decode_dek(dek_base64: &str) -> Result<[u8; 32], String> {
-    let bytes = BASE64
-        .decode(dek_base64)
-        .map_err(|e| e.to_string())?;
-    if bytes.len() != 32 {
-        return Err("Invalid DEK".to_string());
-    }
-    let mut dek = [0u8; 32];
-    dek.copy_from_slice(&bytes);
-    Ok(dek)
+fn get_dek(session: &State<'_, Session>) -> Result<Zeroizing<[u8; 32]>, String> {
+    session
+        .0
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or_else(|| "No active session. Unlock first.".to_string())
 }
 
 #[tauri::command]
 pub fn add_password(
-    state: State<'_, DbConn>,
+    db: State<'_, DbConn>,
+    session: State<'_, Session>,
     username: String,
     password: String,
     url: String,
     category_id: Option<String>,
-    dek_base64: String,
 ) -> Result<PasswordEntry, String> {
-    let conn = state.0.lock().unwrap();
-    let dek = decode_dek(&dek_base64)?;
+    let conn = db.0.lock().unwrap();
+    let dek = get_dek(&session)?;
 
     let (encrypted, nonce) = crypto::encrypt_password(password.as_bytes(), &dek)?;
 
@@ -87,19 +84,19 @@ pub fn get_passwords(
 
 #[tauri::command]
 pub fn update_password(
-    state: State<'_, DbConn>,
+    db: State<'_, DbConn>,
+    session: State<'_, Session>,
     id: String,
     username: String,
     password: Option<String>,
     url: String,
     category_id: Option<String>,
-    dek_base64: String,
 ) -> Result<(), String> {
-    let conn = state.0.lock().unwrap();
+    let conn = db.0.lock().unwrap();
     let now = unix_timestamp();
 
     if let Some(ref pwd) = password {
-        let dek = decode_dek(&dek_base64)?;
+        let dek = get_dek(&session)?;
         let (encrypted, nonce) = crypto::encrypt_password(pwd.as_bytes(), &dek)?;
         conn.execute(
             "UPDATE passwords SET username = ?1, encrypted_password = ?2, nonce = ?3, url = ?4, category_id = ?5, updated_at = ?6 WHERE id = ?7",
@@ -127,12 +124,12 @@ pub fn delete_password(state: State<'_, DbConn>, id: String) -> Result<(), Strin
 
 #[tauri::command]
 pub fn decrypt_password_by_id(
-    state: State<'_, DbConn>,
+    db: State<'_, DbConn>,
+    session: State<'_, Session>,
     id: String,
-    dek_base64: String,
 ) -> Result<String, String> {
-    let conn = state.0.lock().unwrap();
-    let dek = decode_dek(&dek_base64)?;
+    let conn = db.0.lock().unwrap();
+    let dek = get_dek(&session)?;
 
     let (encrypted, nonce): (Vec<u8>, Vec<u8>) = conn
         .query_row(

@@ -4,8 +4,11 @@ use std::fs;
 use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri::Manager;
+use zeroize::Zeroizing;
 
 pub struct DbConn(pub Mutex<Connection>);
+
+pub struct Session(pub Mutex<Option<Zeroizing<[u8; 32]>>>);
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -110,6 +113,7 @@ pub fn init_db(app: &AppHandle) -> SqlResult<()> {
     )?;
 
     app.manage(DbConn(Mutex::new(conn)));
+    app.manage(Session(Mutex::new(None)));
     Ok(())
 }
 

@@ -25,7 +25,7 @@
   }
 
   function handleLock() {
-    auth.lock()
+    void auth.lock()
   }
 </script>
 

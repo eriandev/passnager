@@ -1,13 +1,10 @@
 import { invoke } from '@tauri-apps/api/core'
-import { useAuth } from '$lib/auth.svelte'
 import type { EntryPasswordData, EntryPasswordProps } from '$lib/types'
 
 let loading = $state(true)
 let list = $state<EntryPasswordProps[]>([])
 
 export function usePasswords() {
-  const auth = useAuth()
-
   const load = async (categoryId?: string) => {
     loading = true
     try {
@@ -23,7 +20,6 @@ export function usePasswords() {
   const add = async (data: EntryPasswordData & { password: string }) => {
     const entry = await invoke<EntryPasswordProps>('add_password', {
       url: data.url,
-      dekBase64: auth.dek,
       username: data.username,
       password: data.password,
       categoryId: data.categoryId ?? null,
@@ -35,7 +31,6 @@ export function usePasswords() {
     await invoke('update_password', {
       id,
       url: data.url,
-      dekBase64: auth.dek,
       username: data.username,
       password: data.password || null,
       categoryId: data.categoryId ?? null,
@@ -59,7 +54,7 @@ export function usePasswords() {
   }
 
   const decrypt = async (id: string) => {
-    return await invoke<string>('decrypt_password_by_id', { id, dekBase64: auth.dek })
+    return await invoke<string>('decrypt_password_by_id', { id })
   }
 
   return {

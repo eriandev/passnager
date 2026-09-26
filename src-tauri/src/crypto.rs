@@ -90,11 +90,7 @@ pub fn encrypt_password(plaintext: &[u8], dek: &[u8; 32]) -> Result<(Vec<u8>, Ve
     Ok((ciphertext, nonce_bytes.to_vec()))
 }
 
-pub fn decrypt_password(
-    encrypted: &[u8],
-    nonce: &[u8],
-    dek: &[u8; 32],
-) -> Result<Vec<u8>, String> {
+pub fn decrypt_password(encrypted: &[u8], nonce: &[u8], dek: &[u8; 32]) -> Result<Vec<u8>, String> {
     let cipher = Aes256Gcm::new_from_slice(dek).map_err(|e| e.to_string())?;
     let nonce = Nonce::from_slice(nonce);
 

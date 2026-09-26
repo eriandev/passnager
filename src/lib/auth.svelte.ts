@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
 
-let dek = $state('')
 let initialized = false
 let isUnlocked = $state(false)
 let isConfigured: boolean | null = $state(null)
@@ -22,10 +21,9 @@ export function useAuth() {
 
   const setup = async (password: string) => {
     try {
-      const dekBase64: string = await invoke('setup_master_password', { password })
+      await invoke('setup_master_password', { password })
       isUnlocked = true
       isConfigured = true
-      dek = dekBase64
       return true
     } catch {
       return false
@@ -34,9 +32,8 @@ export function useAuth() {
 
   const unlock = async (password: string) => {
     try {
-      const dekBase64: string = await invoke('verify_master_password', { password })
+      await invoke('verify_master_password', { password })
       isUnlocked = true
-      dek = dekBase64
       return true
     } catch {
       return false
@@ -52,9 +49,13 @@ export function useAuth() {
     }
   }
 
-  const lock = () => {
+  const lock = async () => {
     isUnlocked = false
-    dek = ''
+    try {
+      await invoke('lock_session')
+    } catch {
+      /* best-effort wipe */
+    }
   }
 
   return {
@@ -63,9 +64,6 @@ export function useAuth() {
     },
     get isUnlocked() {
       return isUnlocked
-    },
-    get dek() {
-      return dek
     },
     changePassword,
     checkConfigured: doCheckConfigured,
