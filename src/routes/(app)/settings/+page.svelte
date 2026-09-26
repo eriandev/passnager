@@ -15,8 +15,8 @@
   })
 </script>
 
-<div class="grid gap-y-6 mx-auto max-w-2xl">
-  <h1 class="text-2xl font-bold text-foreground">Settings</h1>
+<div class="grid gap-y-6 mx-auto max-w-4xl">
+  <h1 class="text-3xl font-bold text-foreground">Settings</h1>
 
   <section>
     <article class="grid gap-y-4 rounded-xl border border-border-card bg-background-alt p-6">
