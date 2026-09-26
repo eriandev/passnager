@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.0](https://github.com/eriandev/passnager/compare/v0.1.1...v0.2.0) (2026-09-26)
+
+### ✨ Features
+
+- **cate:** add logic to handling categories ([d2a37fb](https://github.com/eriandev/passnager/commit/d2a37fbb0a006df7035d7b850917a12a1313eef9))
+- **cate:** implements `category` page ([279011c](https://github.com/eriandev/passnager/commit/279011cf611240035ceb79b232539023813b2086))
+- **security:** keep DEK server-side and zeroize key material ([c8ca078](https://github.com/eriandev/passnager/commit/c8ca0783a8bf1d38ba3ac8f6fab1d60313ec7e43))
+
+### 🐛 Bug Fixes
+
+- **ui:** correct modal width ([04ae698](https://github.com/eriandev/passnager/commit/04ae6981c9f801ad72b4969c646db4989d4dfee1))
+- **ux:** run Argon2 commands off the main thread and disable submit while pending ([75858bd](https://github.com/eriandev/passnager/commit/75858bddf7748fb67769cf13cef5232e1c849197))
+
+### 📚 Documentation
+
+- update roadmap list ([2cfd938](https://github.com/eriandev/passnager/commit/2cfd93818d8115f496178fbcb264b702484e0c3a))
+
+### 🚜 Code Refactoring
+
+- separate card action & rename cards ([141bd06](https://github.com/eriandev/passnager/commit/141bd06b4d582c917a3cb7035a285b1267c61646))
+
+### ⚙️ Continuous Integration
+
+- fix release name ([6fcf829](https://github.com/eriandev/passnager/commit/6fcf829dbd95687ce4b413a0827c7395c9b9cf6e))
+
 ## [0.1.1](https://github.com/eriandev/passnager/compare/v0.1.0...v0.1.1) (2026-09-26)
 
 ### 🐛 Bug Fixes
