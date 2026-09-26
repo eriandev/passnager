@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { useAuth } from '$lib/auth.svelte'
   import Key from 'phosphor-svelte/lib/KeyIcon'
   import GearSix from 'phosphor-svelte/lib/GearSixIcon'
   import LockKey from 'phosphor-svelte/lib/LockKeyIcon'
-  import SignOut from 'phosphor-svelte/lib/SignOutIcon'
+  import LockKeyOpen from 'phosphor-svelte/lib/LockKeyOpenIcon'
+  import { useAuth } from '$lib/auth.svelte'
   import { useNavigation } from '$lib/navigation.svelte'
   import type { SidebarProps } from '@/components/types'
 
@@ -31,9 +31,7 @@
 
 <aside class="flex h-full w-60 flex-col border-r border-dark-10">
   <header class="flex items-center gap-3 border-b border-dark-10 px-5 py-4">
-    <div
-      class="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-primary to-secondary text-white"
-    >
+    <div class="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-primary to-secondary">
       <LockKey class="size-4" />
     </div>
     <span class="text-lg font-bold text-white">Passnager</span>
@@ -45,7 +43,7 @@
       <button
         onclick={() => handleNavigate(item.path)}
         class={[
-          'cursor-pointer flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+          'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
           { 'bg-primary/20 text-primary': currentPath === item.path },
           { 'text-foreground hover:bg-primary/20': currentPath !== item.path },
         ]}
@@ -59,7 +57,7 @@
   <footer class="flex flex-col gap-y-1 border-t border-dark-10 p-3">
     <button
       class={[
-        'cursor-pointer flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+        'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
         { 'bg-primary/20 text-primary': currentPath === settingsPath },
         { 'text-foreground hover:bg-primary/20': currentPath !== settingsPath },
       ]}
@@ -70,10 +68,11 @@
     </button>
 
     <button
-      class="flex cursor-pointer w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-destructive/20 hover:text-destructive"
+      class="group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-destructive/20 hover:text-destructive"
       onclick={handleLock}
     >
-      <SignOut class="size-5" />
+      <LockKeyOpen class="size-5 group-hover:hidden" />
+      <LockKey class="size-5 hidden group-hover:block" />
       Lock
     </button>
   </footer>
