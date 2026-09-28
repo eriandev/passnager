@@ -5,10 +5,30 @@ use aes_gcm::{
 use argon2::{Algorithm, Argon2, Version};
 use rand::RngCore;
 
-const ARGON2_MEMORY: u32 = 65536;
-const ARGON2_ITERATIONS: u32 = 3;
-const ARGON2_PARALLELISM: u32 = 4;
-const ARGON2_OUTPUT_LEN: usize = 32;
+/// Argon2id cost parameters.
+///
+/// The defaults are what production vaults are protected with. Tests build a
+/// cheaper variant with `KdfParams { memory: 64, ..Default::default() }`: that
+/// changes how long derivation takes, not what it returns, so test assertions
+/// about ciphertext stay meaningful.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KdfParams {
+    pub memory: u32,
+    pub iterations: u32,
+    pub parallelism: u32,
+    pub output_len: usize,
+}
+
+impl Default for KdfParams {
+    fn default() -> Self {
+        Self {
+            memory: 65536,
+            iterations: 3,
+            parallelism: 4,
+            output_len: 32,
+        }
+    }
+}
 
 pub fn generate_salt() -> [u8; 16] {
     let mut salt = [0u8; 16];
@@ -29,11 +49,19 @@ pub fn generate_dek() -> [u8; 32] {
 }
 
 pub fn derive_kek(password: &[u8], salt: &[u8]) -> Result<[u8; 32], String> {
+    derive_kek_with_params(password, salt, KdfParams::default())
+}
+
+pub fn derive_kek_with_params(
+    password: &[u8],
+    salt: &[u8],
+    kdf: KdfParams,
+) -> Result<[u8; 32], String> {
     let params = argon2::Params::new(
-        ARGON2_MEMORY,
-        ARGON2_ITERATIONS,
-        ARGON2_PARALLELISM,
-        Some(ARGON2_OUTPUT_LEN),
+        kdf.memory,
+        kdf.iterations,
+        kdf.parallelism,
+        Some(kdf.output_len),
     )
     .map_err(|e| e.to_string())?;
     let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
