@@ -28,6 +28,11 @@ pub fn run() {
             commands::categories::get_categories,
             commands::categories::update_category,
             commands::categories::delete_category,
+            commands::notes::add_note,
+            commands::notes::get_notes,
+            commands::notes::update_note,
+            commands::notes::delete_note,
+            commands::notes::decrypt_note_by_id,
             commands::settings::get_app_name,
             commands::settings::get_app_version,
         ])

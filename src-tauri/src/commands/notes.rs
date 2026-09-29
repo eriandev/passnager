@@ -1,0 +1,183 @@
+use crate::crypto;
+use crate::db::{unix_timestamp, DbConn, NoteEntry, Session};
+use tauri::State;
+use uuid::Uuid;
+
+pub const CONTENT_MAX_CHARS: usize = 256;
+
+fn check_content(content: &str) -> Result<(), String> {
+    let length = content.chars().count();
+
+    if length == 0 {
+        return Err("Content is required".to_string());
+    }
+    if length > CONTENT_MAX_CHARS {
+        return Err(format!(
+            "Content must be {CONTENT_MAX_CHARS} characters or fewer"
+        ));
+    }
+
+    Ok(())
+}
+
+fn normalize_color(color: Option<String>) -> Result<Option<String>, String> {
+    let Some(color) = color else {
+        return Ok(None);
+    };
+
+    let trimmed = color.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    let hex = trimmed.strip_prefix('#').unwrap_or(trimmed);
+    let valid = hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit());
+
+    if !valid {
+        return Err("Color must be a hex value like #FFF740".to_string());
+    }
+
+    Ok(Some(format!("#{hex}")))
+}
+
+#[tauri::command]
+pub async fn add_note(
+    db: State<'_, DbConn>,
+    session: State<'_, Session>,
+    title: String,
+    content: String,
+    color: Option<String>,
+    category_id: Option<String>,
+) -> Result<NoteEntry, String> {
+    let conn = db.0.lock().unwrap();
+    let dek = session.dek()?;
+    check_content(&content)?;
+    let color = normalize_color(color)?;
+
+    let (encrypted, nonce) = crypto::encrypt_password(content.as_bytes(), &dek)?;
+
+    let id = Uuid::new_v4().to_string();
+    let now = unix_timestamp();
+
+    conn.execute(
+        "INSERT INTO notes (id, title, encrypted_content, nonce, color, category_id, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        rusqlite::params![id, title, encrypted, nonce, color, category_id, now, now],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(NoteEntry {
+        id,
+        title,
+        color,
+        category_id,
+        created_at: now.clone(),
+        updated_at: now,
+    })
+}
+
+#[tauri::command]
+pub fn get_notes(
+    state: State<'_, DbConn>,
+    category_id: Option<String>,
+) -> Result<Vec<NoteEntry>, String> {
+    let conn = state.0.lock().unwrap();
+
+    let mut stmt = if category_id.is_some() {
+        conn.prepare("SELECT id, title, color, category_id, created_at, updated_at FROM notes WHERE category_id = ?1 ORDER BY created_at DESC")
+            .map_err(|e| e.to_string())?
+    } else {
+        conn.prepare("SELECT id, title, color, category_id, created_at, updated_at FROM notes ORDER BY created_at DESC")
+            .map_err(|e| e.to_string())?
+    };
+
+    let map_row = |row: &rusqlite::Row| {
+        Ok(NoteEntry {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            color: row.get(2)?,
+            category_id: row.get(3)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
+        })
+    };
+
+    let rows = if let Some(ref cat_id) = category_id {
+        stmt.query_map(rusqlite::params![cat_id], map_row)
+    } else {
+        stmt.query_map([], map_row)
+    }
+    .map_err(|e| e.to_string())?;
+
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+#[tauri::command]
+pub async fn update_note(
+    db: State<'_, DbConn>,
+    session: State<'_, Session>,
+    id: String,
+    title: String,
+    content: Option<String>,
+    color: Option<String>,
+    category_id: Option<String>,
+) -> Result<(), String> {
+    let conn = db.0.lock().unwrap();
+    let color = normalize_color(color)?;
+    let now = unix_timestamp();
+
+    match content {
+        Some(content) => {
+            let dek = session.dek()?;
+            check_content(&content)?;
+            let (encrypted, nonce) = crypto::encrypt_password(content.as_bytes(), &dek)?;
+
+            conn.execute(
+                "UPDATE notes SET title = ?1, encrypted_content = ?2, nonce = ?3, color = ?4, \
+                 category_id = ?5, updated_at = ?6 WHERE id = ?7",
+                rusqlite::params![title, encrypted, nonce, color, category_id, now, id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        None => {
+            conn.execute(
+                "UPDATE notes SET title = ?1, color = ?2, category_id = ?3, updated_at = ?4 \
+                 WHERE id = ?5",
+                rusqlite::params![title, color, category_id, now, id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_note(state: State<'_, DbConn>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().unwrap();
+    conn.execute("DELETE FROM notes WHERE id = ?1", rusqlite::params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn decrypt_note_by_id(
+    db: State<'_, DbConn>,
+    session: State<'_, Session>,
+    id: String,
+) -> Result<String, String> {
+    let conn = db.0.lock().unwrap();
+    let dek = session.dek()?;
+
+    let (encrypted, nonce): (Vec<u8>, Vec<u8>) = conn
+        .query_row(
+            "SELECT encrypted_content, nonce FROM notes WHERE id = ?1",
+            rusqlite::params![id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| e.to_string())?;
+
+    let plaintext = crypto::decrypt_password(&encrypted, &nonce, &dek)?;
+
+    String::from_utf8(plaintext).map_err(|e| e.to_string())
+}

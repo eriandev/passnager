@@ -1,0 +1,73 @@
+<script lang="ts">
+  import { toast } from 'svelte-sonner'
+  import { invoke } from '@tauri-apps/api/core'
+  import Copy from 'phosphor-svelte/lib/CopyIcon'
+  import Trash from 'phosphor-svelte/lib/TrashIcon'
+  import NoteBlank from 'phosphor-svelte/lib/NoteBlankIcon'
+  import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
+  import CardAction from '@/components/card-action.svelte'
+  import { useCategories } from '$lib/category.svelte'
+  import { useNotes } from '$lib/note.svelte'
+  import type { CardProps } from '@/components/types'
+  import type { EntryNoteProps } from '$lib/types'
+
+  const notes = useNotes()
+  const categories = useCategories()
+
+  const actions = [
+    {
+      title: 'Copy note',
+      icon: Copy,
+      action: () => copyNote(),
+    },
+    {
+      title: 'Edit',
+      icon: PencilSimple,
+      action: () => onedit(entry),
+    },
+    {
+      icon: Trash,
+      title: 'Delete',
+      action: () => ondelete(entry.id),
+    },
+  ] as const
+
+  let { entry, onedit, ondelete }: CardProps<EntryNoteProps> = $props()
+
+  const category = $derived(categories.list.find((c) => c.id === entry.categoryId))
+
+  async function copyNote() {
+    try {
+      const plain = await notes.content(entry.id)
+      await invoke('copy_to_clipboard', { text: plain })
+      toast.success('Note copied to clipboard')
+    } catch {
+      toast.error('Failed to copy note')
+    }
+  }
+</script>
+
+<article
+  class="flex items-center gap-x-4 rounded-card border-border-card bg-background-alt p-4 transition-colors hover:bg-muted"
+>
+  <section class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+    <NoteBlank class="size-5" weight="fill" style="color:{entry.color ?? '#FFF740'}" />
+  </section>
+
+  <section class="min-w-0 flex-1">
+    <div class="flex items-center gap-x-2">
+      <span class="truncate text-sm font-medium text-foreground">{entry.title}</span>
+      {#if category}
+        <span class="shrink-0 text-xs text-foreground-alt">
+          {category.icon ? category.icon + ' ' : ''}{category.name}
+        </span>
+      {/if}
+    </div>
+  </section>
+
+  <section class="flex items-center gap-x-1">
+    {#each actions as { icon, title, action }, i (title + i)}
+      <CardAction danger={title === 'Delete'} {icon} {title} {action} />
+    {/each}
+  </section>
+</article>

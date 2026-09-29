@@ -10,6 +10,16 @@ pub struct DbConn(pub Mutex<Connection>);
 
 pub struct Session(pub Mutex<Option<Zeroizing<[u8; 32]>>>);
 
+impl Session {
+    pub fn dek(&self) -> Result<Zeroizing<[u8; 32]>, String> {
+        self.0
+            .lock()
+            .unwrap()
+            .clone()
+            .ok_or_else(|| "No active session. Unlock first.".to_string())
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PasswordEntry {
@@ -31,10 +41,10 @@ pub struct Category {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Note {
+pub struct NoteEntry {
     pub id: String,
     pub title: String,
-    pub content: String,
+    pub color: Option<String>,
     pub category_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
@@ -101,7 +111,9 @@ pub fn init_db(app: &AppHandle) -> SqlResult<()> {
         CREATE TABLE IF NOT EXISTS notes (
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
-            content TEXT NOT NULL,
+            encrypted_content BLOB NOT NULL,
+            nonce BLOB NOT NULL,
+            color TEXT,
             category_id TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,

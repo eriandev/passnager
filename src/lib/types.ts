@@ -25,3 +25,13 @@ export interface EntryCategoryProps {
   icon: string | null
   color: string | null
 }
+export interface EntryNoteData {
+  title: string
+  content?: string | null
+  color?: string | null
+  categoryId?: string | null
+}
+export interface EntryNoteProps extends EntryProps {
+  title: string
+  color: string | null
+}

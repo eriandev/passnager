@@ -3,6 +3,7 @@
   import Folder from 'phosphor-svelte/lib/FolderIcon'
   import GearSix from 'phosphor-svelte/lib/GearSixIcon'
   import LockKey from 'phosphor-svelte/lib/LockKeyIcon'
+  import NoteBlank from 'phosphor-svelte/lib/NoteBlankIcon'
   import LockKeyOpen from 'phosphor-svelte/lib/LockKeyOpenIcon'
   import { useAuth } from '$lib/auth.svelte'
   import { useNavigation } from '$lib/navigation.svelte'
@@ -15,6 +16,7 @@
   const settingsPath = '/settings'
   const navItems = [
     { path: '/passwords', label: 'Passwords', icon: Key },
+    { path: '/notes', label: 'Notes', icon: NoteBlank },
     { path: '/categories', label: 'Categories', icon: Folder },
   ] as const
 

@@ -1,6 +1,6 @@
 import type { ButtonRootProps } from 'bits-ui'
 import type { Component, Snippet } from 'svelte'
-import type { HTMLInputAttributes } from 'svelte/elements'
+import type { HTMLInputAttributes, HTMLTextareaAttributes } from 'svelte/elements'
 
 export interface AlertProps {
   open: boolean
@@ -59,4 +59,7 @@ export interface SelectProps {
 }
 export interface SidebarProps {
   currentPath?: string
+}
+export interface TextareaProps extends HTMLTextareaAttributes {
+  value?: string
 }
