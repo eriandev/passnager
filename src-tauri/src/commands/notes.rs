@@ -105,6 +105,7 @@ pub async fn update_note(
     color: Option<String>,
     category_id: Option<String>,
 ) -> Result<(), String> {
+    session.require_unlocked()?;
     let conn = db.0.lock().unwrap();
     let color = color::normalize(color)?;
     let now = unix_timestamp();

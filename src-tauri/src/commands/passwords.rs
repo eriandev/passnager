@@ -84,6 +84,7 @@ pub async fn update_password(
     url: String,
     category_id: Option<String>,
 ) -> Result<(), String> {
+    session.require_unlocked()?;
     let conn = db.0.lock().unwrap();
     let now = unix_timestamp();
 
