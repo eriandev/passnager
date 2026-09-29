@@ -3,7 +3,6 @@ import type { EntryNoteData, EntryNoteProps } from '$lib/types'
 
 let loading = $state(true)
 let list = $state<EntryNoteProps[]>([])
-let contents = $state<Record<string, string>>({})
 
 export function useNotes() {
   const load = async (categoryId?: string) => {
@@ -26,7 +25,6 @@ export function useNotes() {
       categoryId: data.categoryId ?? null,
     })
     list = [entry, ...list]
-    contents[entry.id] = data.content
   }
 
   const update = async (id: string, data: EntryNoteData) => {
@@ -37,7 +35,6 @@ export function useNotes() {
       color: data.color ?? null,
       categoryId: data.categoryId ?? null,
     })
-    if (data.content) contents[id] = data.content
     list = list.map((entry) =>
       entry.id === id
         ? {
@@ -54,21 +51,14 @@ export function useNotes() {
   const remove = async (id: string) => {
     await invoke('delete_note', { id })
     list = list.filter((entry) => entry.id !== id)
-    delete contents[id]
   }
 
   const content = async (id: string) => {
-    const cached = contents[id]
-    if (cached !== undefined) return cached
-
-    const plain = await invoke<string>('decrypt_note_by_id', { id })
-    contents[id] = plain
-    return plain
+    return await invoke<string>('decrypt_note_by_id', { id })
   }
 
   const wipe = () => {
     list = []
-    contents = {}
   }
 
   return {
@@ -77,9 +67,6 @@ export function useNotes() {
     },
     get loading() {
       return loading
-    },
-    get contents() {
-      return contents
     },
     add,
     content,
