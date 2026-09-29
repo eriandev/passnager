@@ -1,3 +1,4 @@
+use crate::color;
 use crate::crypto;
 use crate::db::{unix_timestamp, DbConn, NoteEntry, Session};
 use tauri::State;
@@ -20,26 +21,6 @@ fn check_content(content: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn normalize_color(color: Option<String>) -> Result<Option<String>, String> {
-    let Some(color) = color else {
-        return Ok(None);
-    };
-
-    let trimmed = color.trim();
-    if trimmed.is_empty() {
-        return Ok(None);
-    }
-
-    let hex = trimmed.strip_prefix('#').unwrap_or(trimmed);
-    let valid = hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit());
-
-    if !valid {
-        return Err("Color must be a hex value like #FFF740".to_string());
-    }
-
-    Ok(Some(format!("#{hex}")))
-}
-
 #[tauri::command]
 pub async fn add_note(
     db: State<'_, DbConn>,
@@ -52,7 +33,7 @@ pub async fn add_note(
     let conn = db.0.lock().unwrap();
     let dek = session.dek()?;
     check_content(&content)?;
-    let color = normalize_color(color)?;
+    let color = color::normalize(color)?;
 
     let (encrypted, nonce) = crypto::encrypt_password(content.as_bytes(), &dek)?;
 
@@ -123,7 +104,7 @@ pub async fn update_note(
     category_id: Option<String>,
 ) -> Result<(), String> {
     let conn = db.0.lock().unwrap();
-    let color = normalize_color(color)?;
+    let color = color::normalize(color)?;
     let now = unix_timestamp();
 
     match content {

@@ -93,7 +93,9 @@ pub fn init_db(app: &AppHandle) -> SqlResult<()> {
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             icon TEXT,
-            color TEXT
+            color TEXT,
+            -- The colour is interpolated into a CSS property, so only a hex triple.
+            CHECK (color IS NULL OR color GLOB '#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]')
         );
 
         CREATE TABLE IF NOT EXISTS passwords (
@@ -117,7 +119,13 @@ pub fn init_db(app: &AppHandle) -> SqlResult<()> {
             category_id TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
-            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+            -- The body is capped at 256 characters. The column holds ciphertext, so
+            -- the constraint can only bound the worst case in bytes: 256 * 4 UTF-8
+            -- bytes plus the 16-byte AES-GCM tag, and at least 1 byte plus the tag.
+            CHECK (length(encrypted_content) BETWEEN 17 AND 1040),
+            -- The colour is interpolated into a CSS property, so only a hex triple.
+            CHECK (color IS NULL OR color GLOB '#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]')
         );
 
         INSERT OR IGNORE INTO settings (key, value) VALUES ('theme', 'dark');

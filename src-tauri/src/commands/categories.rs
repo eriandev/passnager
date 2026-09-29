@@ -1,3 +1,4 @@
+use crate::color;
 use crate::db::{Category, DbConn};
 use tauri::State;
 use uuid::Uuid;
@@ -11,6 +12,7 @@ pub fn add_category(
 ) -> Result<Category, String> {
     let conn = state.0.lock().unwrap();
     let id = Uuid::new_v4().to_string();
+    let color = color::normalize(color)?;
 
     conn.execute(
         "INSERT INTO categories (id, name, icon, color) VALUES (?1, ?2, ?3, ?4)",
@@ -56,6 +58,7 @@ pub fn update_category(
     color: Option<String>,
 ) -> Result<(), String> {
     let conn = state.0.lock().unwrap();
+    let color = color::normalize(color)?;
     conn.execute(
         "UPDATE categories SET name = ?1, icon = ?2, color = ?3 WHERE id = ?4",
         rusqlite::params![name, icon, color, id],

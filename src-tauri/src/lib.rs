@@ -1,3 +1,4 @@
+mod color;
 mod commands;
 mod crypto;
 mod db;
