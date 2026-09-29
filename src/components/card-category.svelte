@@ -2,8 +2,9 @@
   import Trash from 'phosphor-svelte/lib/TrashIcon'
   import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
   import CardAction from '@/components/card-action.svelte'
+  import { CATEGORY_DEFAULT_COLOR } from '$lib/consts'
   import type { CardProps } from '@/components/types'
-  import type { EntryCategoryProps } from '@/lib/types'
+  import type { EntryCategoryProps } from '$lib/types'
 
   const actions = [
     {
@@ -26,7 +27,7 @@
 >
   <section
     class="flex size-12 items-center justify-center rounded-xl text-xl"
-    style="background-color: {entry.color || '#3EE0CF'}40"
+    style="background-color: {entry.color || CATEGORY_DEFAULT_COLOR}40"
   >
     {entry.icon || '📁'}
   </section>

@@ -8,7 +8,7 @@
   import CardAction from '@/components/card-action.svelte'
   import { usePasswords } from '$lib/password.svelte'
   import type { CardProps } from '@/components/types'
-  import type { EntryPasswordProps } from '@/lib/types'
+  import type { EntryPasswordProps } from '$lib/types'
 
   const actions = [
     {

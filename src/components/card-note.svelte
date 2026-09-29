@@ -7,9 +7,10 @@
   import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
   import CardAction from '@/components/card-action.svelte'
   import { useCategories } from '$lib/category.svelte'
+  import { NOTE_DEFAULT_COLOR } from '$lib/consts'
   import { useNotes } from '$lib/note.svelte'
-  import type { CardProps } from '@/components/types'
   import type { EntryNoteProps } from '$lib/types'
+  import type { CardProps } from '@/components/types'
 
   const notes = useNotes()
   const categories = useCategories()
@@ -51,7 +52,7 @@
   class="flex items-center gap-x-4 rounded-card border-border-card bg-background-alt p-4 transition-colors hover:bg-muted"
 >
   <section class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-    <NoteBlank class="size-5" weight="fill" style="color:{entry.color ?? '#FFF740'}" />
+    <NoteBlank class="size-5" weight="fill" style="color:{entry.color ?? NOTE_DEFAULT_COLOR}" />
   </section>
 
   <section class="min-w-0 flex-1">

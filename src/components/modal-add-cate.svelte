@@ -4,6 +4,7 @@
   import Input from '@/components/input.svelte'
   import Modal from '@/components/modal.svelte'
   import { useCategories } from '$lib/category.svelte'
+  import { CATEGORY_DEFAULT_COLOR } from '$lib/consts'
   import type { ModalAddProps } from '@/components/types'
 
   const categories = useCategories()
@@ -15,14 +16,14 @@
   let formIcon = $state('')
   let formError = $state('')
   let submitting = $state(false)
-  let formColor = $state('#3EE0CF')
+  let formColor = $state(CATEGORY_DEFAULT_COLOR)
 
   $effect(() => {
     if (open) {
       formName = ''
       formIcon = ''
       formError = ''
-      formColor = '#3EE0CF'
+      formColor = CATEGORY_DEFAULT_COLOR
     }
   })
 

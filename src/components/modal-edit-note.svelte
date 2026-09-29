@@ -1,14 +1,15 @@
 <script lang="ts">
   import { toast } from 'svelte-sonner'
   import { AlertDialog } from 'bits-ui'
+  import { useNotes } from '$lib/note.svelte'
   import Input from '@/components/input.svelte'
   import Modal from '@/components/modal.svelte'
   import Select from '@/components/select.svelte'
   import Textarea from '@/components/textarea.svelte'
   import { useCategories } from '$lib/category.svelte'
-  import { useNotes } from '$lib/note.svelte'
-  import type { EntryNoteProps } from '$lib/types'
+  import { NOTE_CONTENT_MAX, NOTE_DEFAULT_COLOR } from '$lib/consts'
   import type { ModalEditProps } from '@/components/types'
+  import type { EntryNoteProps } from '$lib/types'
 
   const notes = useNotes()
   const categories = useCategories()
@@ -20,10 +21,10 @@
   let formContent = $state('')
   let submitting = $state(false)
   let formCategoryId = $state('')
-  let formColor = $state('#FFF740')
+  let formColor = $state(NOTE_DEFAULT_COLOR)
 
   const contentLength = $derived([...formContent].length)
-  const contentTooLong = $derived(contentLength > 256)
+  const contentTooLong = $derived(contentLength > NOTE_CONTENT_MAX)
 
   const categoryItems = $derived([
     { label: 'No category', value: '' },
@@ -35,8 +36,8 @@
       formError = ''
       formContent = ''
       formTitle = entry.title
-      formColor = entry.color ?? '#FFF740'
       formCategoryId = entry.categoryId || ''
+      formColor = entry.color ?? NOTE_DEFAULT_COLOR
     }
   })
 
@@ -52,7 +53,7 @@
       return
     }
     if (contentTooLong) {
-      formError = `Content must be ${256} characters or fewer`
+      formError = `Content must be ${NOTE_CONTENT_MAX} characters or fewer`
       return
     }
 
@@ -86,7 +87,7 @@
         <div class="flex items-center justify-between">
           <label for="edit-note-content">New content (leave empty to keep current)</label>
           <span class={['text-xs font-normal', contentTooLong ? 'text-destructive' : 'text-foreground-alt']}>
-            {contentLength}/{256}
+            {contentLength}/{NOTE_CONTENT_MAX}
           </span>
         </div>
         <Textarea

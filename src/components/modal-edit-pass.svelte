@@ -6,7 +6,7 @@
   import Select from '@/components/select.svelte'
   import { usePasswords } from '$lib/password.svelte'
   import { useCategories } from '$lib/category.svelte'
-  import type { EntryPasswordProps } from '@/lib/types'
+  import type { EntryPasswordProps } from '$lib/types'
   import type { ModalEditProps } from '@/components/types'
 
   const passwords = usePasswords()

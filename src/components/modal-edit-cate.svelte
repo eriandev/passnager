@@ -4,7 +4,8 @@
   import Input from '@/components/input.svelte'
   import Modal from '@/components/modal.svelte'
   import { useCategories } from '$lib/category.svelte'
-  import type { EntryCategoryProps } from '@/lib/types'
+  import { CATEGORY_DEFAULT_COLOR } from '$lib/consts'
+  import type { EntryCategoryProps } from '$lib/types'
   import type { ModalEditProps } from '@/components/types'
 
   const categories = useCategories()
@@ -25,7 +26,7 @@
       formName = entry.name
       formCategoryId = entry.id
       formIcon = entry.icon || ''
-      formColor = entry.color || '#3EE0CF'
+      formColor = entry.color || CATEGORY_DEFAULT_COLOR
     }
   })
 

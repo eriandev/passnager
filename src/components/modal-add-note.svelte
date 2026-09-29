@@ -7,6 +7,7 @@
   import Select from '@/components/select.svelte'
   import Textarea from '@/components/textarea.svelte'
   import { useCategories } from '$lib/category.svelte'
+  import { NOTE_CONTENT_MAX, NOTE_DEFAULT_COLOR } from '$lib/consts'
   import type { ModalAddProps } from '@/components/types'
 
   const notes = useNotes()
@@ -19,10 +20,10 @@
   let formContent = $state('')
   let submitting = $state(false)
   let formCategoryId = $state('')
-  let formColor = $state('#FFF740')
+  let formColor = $state(NOTE_DEFAULT_COLOR)
 
   const contentLength = $derived([...formContent].length)
-  const contentTooLong = $derived(contentLength > 256)
+  const contentTooLong = $derived(contentLength > NOTE_CONTENT_MAX)
 
   const categoryItems = $derived([
     { label: 'No category', value: '' },
@@ -35,7 +36,7 @@
       formError = ''
       formContent = ''
       formCategoryId = ''
-      formColor = '#FFF740'
+      formColor = NOTE_DEFAULT_COLOR
     }
   })
 
@@ -54,7 +55,7 @@
       return
     }
     if (contentTooLong) {
-      formError = `Content must be ${256} characters or fewer`
+      formError = `Content must be ${NOTE_CONTENT_MAX} characters or fewer`
       return
     }
 
@@ -88,7 +89,7 @@
         <div class="flex items-center justify-between">
           <label for="add-note-content">Content</label>
           <span class={['text-xs font-normal', contentTooLong ? 'text-destructive' : 'text-foreground-alt']}>
-            {contentLength}/{256}
+            {contentLength}/{NOTE_CONTENT_MAX}
           </span>
         </div>
         <Textarea
