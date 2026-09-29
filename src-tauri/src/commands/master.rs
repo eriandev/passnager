@@ -18,11 +18,6 @@ fn get_master_info(conn: &rusqlite::Connection) -> Result<MasterPasswordInfo, St
     .map_err(|e| e.to_string())
 }
 
-fn set_session_dek(session: &State<'_, Session>, dek: [u8; 32]) {
-    let mut guard = session.0.lock().unwrap();
-    *guard = Some(Zeroizing::new(dek));
-}
-
 /// What the setup worker hands back: the material to persist and the DEK to
 /// unlock the session with.
 ///
@@ -31,7 +26,7 @@ fn set_session_dek(session: &State<'_, Session>, dek: [u8; 32]) {
 /// mistake would only surface when the vault failed to unlock.
 struct NewMaster {
     salt: [u8; 16],
-    dek: [u8; 32],
+    dek: Zeroizing<[u8; 32]>,
     wrapped_dek: Vec<u8>,
     dek_nonce: Vec<u8>,
 }
@@ -81,7 +76,7 @@ pub async fn setup_master_password(
     } = tauri::async_runtime::spawn_blocking(move || -> Result<NewMaster, String> {
         let salt = crypto::generate_salt();
         let kek = Zeroizing::new(crypto::derive_kek(&password_bytes, &salt)?);
-        let dek = crypto::generate_dek();
+        let dek = Zeroizing::new(crypto::generate_dek());
         let (wrapped_dek, dek_nonce) = crypto::wrap_dek(&dek, &kek)?;
         Ok(NewMaster {
             salt,
@@ -102,7 +97,7 @@ pub async fn setup_master_password(
         .map_err(|e| e.to_string())?;
     }
 
-    set_session_dek(&session, dek);
+    session.unlock(dek);
     Ok(true)
 }
 
@@ -119,21 +114,25 @@ pub async fn verify_master_password(
 
     let password_bytes = password.into_bytes();
 
-    let dek = tauri::async_runtime::spawn_blocking(move || -> Result<[u8; 32], String> {
-        let kek = Zeroizing::new(crypto::derive_kek(&password_bytes, &info.salt)?);
-        crypto::unwrap_dek(&info.wrapped_dek, &info.dek_nonce, &kek)
-    })
-    .await
-    .map_err(|e| e.to_string())??;
+    let dek =
+        tauri::async_runtime::spawn_blocking(move || -> Result<Zeroizing<[u8; 32]>, String> {
+            let kek = Zeroizing::new(crypto::derive_kek(&password_bytes, &info.salt)?);
+            Ok(Zeroizing::new(crypto::unwrap_dek(
+                &info.wrapped_dek,
+                &info.dek_nonce,
+                &kek,
+            )?))
+        })
+        .await
+        .map_err(|e| e.to_string())??;
 
-    set_session_dek(&session, dek);
+    session.unlock(dek);
     Ok(true)
 }
 
 #[tauri::command]
-pub fn lock_session(state: State<'_, Session>) -> Result<(), String> {
-    let mut guard = state.0.lock().unwrap();
-    *guard = None;
+pub fn lock_session(session: State<'_, Session>) -> Result<(), String> {
+    session.lock();
     Ok(())
 }
 

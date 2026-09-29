@@ -47,6 +47,10 @@ export function useCategories() {
     list = list.filter((entry) => entry.id !== id)
   }
 
+  const wipe = () => {
+    list = []
+  }
+
   return {
     get list() {
       return list
@@ -58,5 +62,6 @@ export function useCategories() {
     load,
     remove,
     update,
+    wipe,
   }
 }

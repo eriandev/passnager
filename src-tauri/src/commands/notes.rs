@@ -60,8 +60,10 @@ pub async fn add_note(
 #[tauri::command]
 pub fn get_notes(
     state: State<'_, DbConn>,
+    session: State<'_, Session>,
     category_id: Option<String>,
 ) -> Result<Vec<NoteEntry>, String> {
+    session.require_unlocked()?;
     let conn = state.0.lock().unwrap();
 
     let mut stmt = if category_id.is_some() {
@@ -134,7 +136,12 @@ pub async fn update_note(
 }
 
 #[tauri::command]
-pub fn delete_note(state: State<'_, DbConn>, id: String) -> Result<(), String> {
+pub fn delete_note(
+    state: State<'_, DbConn>,
+    session: State<'_, Session>,
+    id: String,
+) -> Result<(), String> {
+    session.require_unlocked()?;
     let conn = state.0.lock().unwrap();
     conn.execute("DELETE FROM notes WHERE id = ?1", rusqlite::params![id])
         .map_err(|e| e.to_string())?;

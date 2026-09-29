@@ -8,15 +8,63 @@ use zeroize::Zeroizing;
 
 pub struct DbConn(pub Mutex<Connection>);
 
-pub struct Session(pub Mutex<Option<Zeroizing<[u8; 32]>>>);
+/// The unlocked-vault state: the in-memory DEK that every encrypted row is
+/// sealed with.
+///
+/// The mutex is private so the key can only be read, stored or dropped through
+/// the three methods below. That is the whole point of this type: no command
+/// should be reaching into the key material, and hiding the field makes that a
+/// compile error rather than a convention someone can quietly break.
+#[derive(Default)]
+pub struct Session(Mutex<Option<Zeroizing<[u8; 32]>>>);
 
 impl Session {
+    /// Shared so every rejection reads the same to the frontend.
+    const LOCKED: &'static str = "No active session. Unlock first.";
+
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// The key for the current session, or an error if the vault is locked.
+    ///
+    /// Takes `&self` and hands back an owned copy, so the DEK a command encrypts
+    /// with cannot outlive the borrow of the session and the lock is not held
+    /// across the encryption itself.
     pub fn dek(&self) -> Result<Zeroizing<[u8; 32]>, String> {
         self.0
             .lock()
             .unwrap()
             .clone()
-            .ok_or_else(|| "No active session. Unlock first.".to_string())
+            .ok_or_else(|| Self::LOCKED.to_string())
+    }
+
+    /// Errors unless the vault is unlocked, without handing out the key.
+    ///
+    /// For the commands that read metadata but never touch ciphertext. They are
+    /// still reading the vault's contents, so they belong behind the same gate as
+    /// the ones that decrypt, but they have no reason to clone a DEK just to find
+    /// out whether there is one.
+    pub fn require_unlocked(&self) -> Result<(), String> {
+        self.0
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|_| ())
+            .ok_or_else(|| Self::LOCKED.to_string())
+    }
+
+    /// Stores `dek` as the session key, replacing any previous one.
+    ///
+    /// Takes the key already wrapped, so the only place raw DEK bytes exist is
+    /// the worker that unwraps them, and they are zeroed the moment this drops.
+    pub fn unlock(&self, dek: Zeroizing<[u8; 32]>) {
+        *self.0.lock().unwrap() = Some(dek);
+    }
+
+    /// Drops the session key. This is what locking the vault means.
+    pub fn lock(&self) {
+        *self.0.lock().unwrap() = None;
     }
 }
 
@@ -128,7 +176,7 @@ pub fn init_db(app: &AppHandle) -> SqlResult<()> {
     )?;
 
     app.manage(DbConn(Mutex::new(conn)));
-    app.manage(Session(Mutex::new(None)));
+    app.manage(Session::new());
     Ok(())
 }
 

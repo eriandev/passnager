@@ -1,15 +1,17 @@
 use crate::color;
-use crate::db::{Category, DbConn};
+use crate::db::{Category, DbConn, Session};
 use tauri::State;
 use uuid::Uuid;
 
 #[tauri::command]
 pub fn add_category(
     state: State<'_, DbConn>,
+    session: State<'_, Session>,
     name: String,
     icon: Option<String>,
     color: Option<String>,
 ) -> Result<Category, String> {
+    session.require_unlocked()?;
     let conn = state.0.lock().unwrap();
     let id = Uuid::new_v4().to_string();
     let color = color::normalize(color)?;
@@ -29,7 +31,11 @@ pub fn add_category(
 }
 
 #[tauri::command]
-pub fn get_categories(state: State<'_, DbConn>) -> Result<Vec<Category>, String> {
+pub fn get_categories(
+    state: State<'_, DbConn>,
+    session: State<'_, Session>,
+) -> Result<Vec<Category>, String> {
+    session.require_unlocked()?;
     let conn = state.0.lock().unwrap();
     let mut stmt = conn
         .prepare("SELECT id, name, icon, color FROM categories ORDER BY name ASC")
@@ -52,11 +58,13 @@ pub fn get_categories(state: State<'_, DbConn>) -> Result<Vec<Category>, String>
 #[tauri::command]
 pub fn update_category(
     state: State<'_, DbConn>,
+    session: State<'_, Session>,
     id: String,
     name: String,
     icon: Option<String>,
     color: Option<String>,
 ) -> Result<(), String> {
+    session.require_unlocked()?;
     let conn = state.0.lock().unwrap();
     let color = color::normalize(color)?;
     conn.execute(
@@ -68,7 +76,12 @@ pub fn update_category(
 }
 
 #[tauri::command]
-pub fn delete_category(state: State<'_, DbConn>, id: String) -> Result<(), String> {
+pub fn delete_category(
+    state: State<'_, DbConn>,
+    session: State<'_, Session>,
+    id: String,
+) -> Result<(), String> {
+    session.require_unlocked()?;
     let conn = state.0.lock().unwrap();
     conn.execute(
         "DELETE FROM categories WHERE id = ?1",

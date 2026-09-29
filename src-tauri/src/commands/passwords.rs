@@ -2,16 +2,6 @@ use crate::crypto;
 use crate::db::{unix_timestamp, DbConn, PasswordEntry, Session};
 use tauri::State;
 use uuid::Uuid;
-use zeroize::Zeroizing;
-
-fn get_dek(session: &State<'_, Session>) -> Result<Zeroizing<[u8; 32]>, String> {
-    session
-        .0
-        .lock()
-        .unwrap()
-        .clone()
-        .ok_or_else(|| "No active session. Unlock first.".to_string())
-}
 
 #[tauri::command]
 pub async fn add_password(
@@ -23,7 +13,7 @@ pub async fn add_password(
     category_id: Option<String>,
 ) -> Result<PasswordEntry, String> {
     let conn = db.0.lock().unwrap();
-    let dek = get_dek(&session)?;
+    let dek = session.dek()?;
 
     let (encrypted, nonce) = crypto::encrypt_password(password.as_bytes(), &dek)?;
 
@@ -49,8 +39,10 @@ pub async fn add_password(
 #[tauri::command]
 pub fn get_passwords(
     state: State<'_, DbConn>,
+    session: State<'_, Session>,
     category_id: Option<String>,
 ) -> Result<Vec<PasswordEntry>, String> {
+    session.require_unlocked()?;
     let conn = state.0.lock().unwrap();
 
     let mut stmt = if category_id.is_some() {
@@ -96,7 +88,7 @@ pub async fn update_password(
     let now = unix_timestamp();
 
     if let Some(ref pwd) = password {
-        let dek = get_dek(&session)?;
+        let dek = session.dek()?;
         let (encrypted, nonce) = crypto::encrypt_password(pwd.as_bytes(), &dek)?;
         conn.execute(
             "UPDATE passwords SET username = ?1, encrypted_password = ?2, nonce = ?3, url = ?4, category_id = ?5, updated_at = ?6 WHERE id = ?7",
@@ -115,7 +107,12 @@ pub async fn update_password(
 }
 
 #[tauri::command]
-pub fn delete_password(state: State<'_, DbConn>, id: String) -> Result<(), String> {
+pub fn delete_password(
+    state: State<'_, DbConn>,
+    session: State<'_, Session>,
+    id: String,
+) -> Result<(), String> {
+    session.require_unlocked()?;
     let conn = state.0.lock().unwrap();
     conn.execute("DELETE FROM passwords WHERE id = ?1", rusqlite::params![id])
         .map_err(|e| e.to_string())?;
@@ -129,7 +126,7 @@ pub async fn decrypt_password_by_id(
     id: String,
 ) -> Result<String, String> {
     let conn = db.0.lock().unwrap();
-    let dek = get_dek(&session)?;
+    let dek = session.dek()?;
 
     let (encrypted, nonce): (Vec<u8>, Vec<u8>) = conn
         .query_row(

@@ -1,4 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
+import { useCategories } from '$lib/category.svelte'
+import { usePasswords } from '$lib/password.svelte'
+import { useNotes } from '$lib/note.svelte'
 
 let initialized = false
 let isUnlocked = $state(false)
@@ -50,11 +53,15 @@ export function useAuth() {
   }
 
   const lock = async () => {
+    useNotes().wipe()
+    usePasswords().wipe()
+    useCategories().wipe()
+
     isUnlocked = false
     try {
       await invoke('lock_session')
     } catch {
-      /* best-effort wipe */
+      /* best-effort */
     }
   }
 

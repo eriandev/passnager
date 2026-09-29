@@ -57,6 +57,10 @@ export function usePasswords() {
     return await invoke<string>('decrypt_password_by_id', { id })
   }
 
+  const wipe = () => {
+    list = []
+  }
+
   return {
     get list() {
       return list
@@ -69,5 +73,6 @@ export function usePasswords() {
     decrypt,
     remove,
     update,
+    wipe,
   }
 }
