@@ -51,11 +51,6 @@ pub struct NoteEntry {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Settings {
-    pub theme: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct MasterPasswordInfo {
     pub salt: Vec<u8>,
     pub wrapped_dek: Vec<u8>,
