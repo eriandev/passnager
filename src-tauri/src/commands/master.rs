@@ -23,6 +23,27 @@ fn set_session_dek(session: &State<'_, Session>, dek: [u8; 32]) {
     *guard = Some(Zeroizing::new(dek));
 }
 
+/// What the setup worker hands back: the material to persist and the DEK to
+/// unlock the session with.
+///
+/// A struct rather than a tuple because `wrapped_dek` and `dek_nonce` are both
+/// `Vec<u8>`, so a tuple would compile happily with the two swapped and the
+/// mistake would only surface when the vault failed to unlock.
+struct NewMaster {
+    salt: [u8; 16],
+    dek: [u8; 32],
+    wrapped_dek: Vec<u8>,
+    dek_nonce: Vec<u8>,
+}
+
+/// The rewrapped DEK for `change_master_password`, shaped like the three
+/// `master_password` columns it replaces.
+struct RewrappedMaster {
+    salt: Vec<u8>,
+    wrapped_dek: Vec<u8>,
+    dek_nonce: Vec<u8>,
+}
+
 #[tauri::command]
 pub fn is_master_configured(state: State<'_, DbConn>) -> Result<bool, String> {
     let conn = state.0.lock().unwrap();
@@ -52,15 +73,23 @@ pub async fn setup_master_password(
 
     let password_bytes = password.into_bytes();
 
-    let (salt, dek, wrapped_dek, dek_nonce) = tauri::async_runtime::spawn_blocking(
-        move || -> Result<([u8; 16], [u8; 32], Vec<u8>, Vec<u8>), String> {
-            let salt = crypto::generate_salt();
-            let kek = Zeroizing::new(crypto::derive_kek(&password_bytes, &salt)?);
-            let dek = crypto::generate_dek();
-            let (wrapped_dek, dek_nonce) = crypto::wrap_dek(&dek, &kek)?;
-            Ok((salt, dek, wrapped_dek, dek_nonce))
-        },
-    )
+    let NewMaster {
+        salt,
+        dek,
+        wrapped_dek,
+        dek_nonce,
+    } = tauri::async_runtime::spawn_blocking(move || -> Result<NewMaster, String> {
+        let salt = crypto::generate_salt();
+        let kek = Zeroizing::new(crypto::derive_kek(&password_bytes, &salt)?);
+        let dek = crypto::generate_dek();
+        let (wrapped_dek, dek_nonce) = crypto::wrap_dek(&dek, &kek)?;
+        Ok(NewMaster {
+            salt,
+            dek,
+            wrapped_dek,
+            dek_nonce,
+        })
+    })
     .await
     .map_err(|e| e.to_string())??;
 
@@ -122,21 +151,27 @@ pub async fn change_master_password(
     let old_bytes = old_password.into_bytes();
     let new_bytes = new_password.into_bytes();
 
-    let (new_salt, new_wrapped, new_nonce) = tauri::async_runtime::spawn_blocking(
-        move || -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), String> {
-            let old_kek = Zeroizing::new(crypto::derive_kek(&old_bytes, &info.salt)?);
-            let dek = Zeroizing::new(crypto::unwrap_dek(
-                &info.wrapped_dek,
-                &info.dek_nonce,
-                &old_kek,
-            )?);
+    let RewrappedMaster {
+        salt: new_salt,
+        wrapped_dek: new_wrapped,
+        dek_nonce: new_nonce,
+    } = tauri::async_runtime::spawn_blocking(move || -> Result<RewrappedMaster, String> {
+        let old_kek = Zeroizing::new(crypto::derive_kek(&old_bytes, &info.salt)?);
+        let dek = Zeroizing::new(crypto::unwrap_dek(
+            &info.wrapped_dek,
+            &info.dek_nonce,
+            &old_kek,
+        )?);
 
-            let new_salt = crypto::generate_salt();
-            let new_kek = Zeroizing::new(crypto::derive_kek(&new_bytes, &new_salt)?);
-            let (new_wrapped, new_nonce) = crypto::wrap_dek(&dek, &new_kek)?;
-            Ok((new_salt.to_vec(), new_wrapped, new_nonce))
-        },
-    )
+        let new_salt = crypto::generate_salt();
+        let new_kek = Zeroizing::new(crypto::derive_kek(&new_bytes, &new_salt)?);
+        let (new_wrapped, new_nonce) = crypto::wrap_dek(&dek, &new_kek)?;
+        Ok(RewrappedMaster {
+            salt: new_salt.to_vec(),
+            wrapped_dek: new_wrapped,
+            dek_nonce: new_nonce,
+        })
+    })
     .await
     .map_err(|e| e.to_string())??;
 
