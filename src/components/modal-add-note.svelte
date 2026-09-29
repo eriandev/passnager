@@ -7,6 +7,7 @@
   import Select from '@/components/select.svelte'
   import Textarea from '@/components/textarea.svelte'
   import { useCategories } from '$lib/category.svelte'
+  import ColorPicker from '@/components/color-picker.svelte'
   import { NOTE_CONTENT_MAX, NOTE_DEFAULT_COLOR } from '$lib/consts'
   import type { ModalAddProps } from '@/components/types'
 
@@ -103,12 +104,7 @@
 
       <div class="grid gap-y-1">
         <label for="add-note-color">Color</label>
-        <input
-          type="color"
-          id="add-note-color"
-          bind:value={formColor}
-          class="h-10 w-20 rounded-lg border border-border-input bg-background"
-        />
+        <ColorPicker id="add-note-color" bind:value={formColor} />
       </div>
 
       <div class="grid gap-y-1">

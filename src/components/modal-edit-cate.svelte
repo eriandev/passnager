@@ -5,6 +5,7 @@
   import Modal from '@/components/modal.svelte'
   import { useCategories } from '$lib/category.svelte'
   import { CATEGORY_DEFAULT_COLOR } from '$lib/consts'
+  import ColorPicker from '@/components/color-picker.svelte'
   import type { EntryCategoryProps } from '$lib/types'
   import type { ModalEditProps } from '@/components/types'
 
@@ -83,12 +84,7 @@
 
       <div class="grid gap-y-1">
         <label for="category-color">Color</label>
-        <input
-          type="color"
-          id="category-color"
-          bind:value={formColor}
-          class="h-10 w-20 rounded-lg border border-border-input bg-background"
-        />
+        <ColorPicker id="category-color" bind:value={formColor} />
       </div>
     </section>
 

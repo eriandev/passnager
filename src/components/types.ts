@@ -26,6 +26,10 @@ export interface CardProps<T> {
   onedit: (entry: T) => void
   ondelete: (id: string) => void
 }
+export interface ColorPickerProps {
+  id?: string
+  value?: string
+}
 export interface InputProps extends HTMLInputAttributes {
   leftIcon?: Snippet
   rightIcon?: Snippet
