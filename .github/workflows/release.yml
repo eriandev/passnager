@@ -89,6 +89,14 @@ jobs:
       - name: Install dependencies 💼
         run: pnpm install --frozen-lockfile
 
+      # The CHANGELOG is parsed with Python, and `python3` is not on PATH in a
+      # consistent way across the runner images, so it is set up explicitly
+      # instead of relying on whatever each image happens to ship.
+      - name: Setup Python 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
       # The release title is the tag exactly as pushed (`v1.2.3`), so the release
       # heading and the tag always read identically. The body is exactly the
       # section that `release-it` just added to CHANGELOG.md for that version. The
@@ -102,8 +110,13 @@ jobs:
       # It fails loudly when the version is missing from the CHANGELOG instead of
       # publishing an empty release, which is the failure mode worth being strict
       # about: an empty body is much harder to notice than a red build.
+      #
+      # `shell: bash` is explicit because the default shell on windows-latest is
+      # PowerShell, which has no heredoc and no `${VAR#prefix}` expansion. Git Bash
+      # is preinstalled there, so the same script runs unchanged on both platforms.
       - name: Read version notes from CHANGELOG 📝
         id: notes
+        shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           python3 - "$VERSION" >> "$GITHUB_OUTPUT" <<'PY'
