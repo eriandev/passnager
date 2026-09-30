@@ -105,13 +105,22 @@ pub struct MasterPasswordInfo {
     pub dek_nonce: Vec<u8>,
 }
 
-pub fn db_path(app: &AppHandle) -> std::path::PathBuf {
+/// The directory holding the vault and the log file.
+///
+/// Panics when the OS will not name a config dir: with nowhere to put a
+/// vault there is no app to run, and a panic in `setup` is a louder and more
+/// honest outcome than a vault that silently appears somewhere else.
+pub fn config_dir(app: &AppHandle) -> std::path::PathBuf {
     let dir = app
         .path()
         .app_config_dir()
         .expect("failed to get app config dir");
     fs::create_dir_all(&dir).ok();
-    dir.join("passnager.db")
+    dir
+}
+
+pub fn db_path(app: &AppHandle) -> std::path::PathBuf {
+    config_dir(app).join("passnager.db")
 }
 
 /// The whole schema, kept out of `init_db` so the constraints can be tested
