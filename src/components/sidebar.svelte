@@ -5,14 +5,10 @@
   import LockKey from 'phosphor-svelte/lib/LockKeyIcon'
   import NoteBlank from 'phosphor-svelte/lib/NoteBlankIcon'
   import LockKeyOpen from 'phosphor-svelte/lib/LockKeyOpenIcon'
-  import { useAuth } from '$lib/auth.svelte'
-  import { useNavigation } from '$lib/navigation.svelte'
   import type { SidebarProps } from '@/components/types'
 
   type NavPath = (typeof navItems)[number]['path']
 
-  const auth = useAuth()
-  const navigate = useNavigation()
   const settingsPath = '/settings'
   const navItems = [
     { path: '/passwords', label: 'Passwords', icon: Key },
@@ -20,18 +16,18 @@
     { path: '/categories', label: 'Categories', icon: Folder },
   ] as const
 
-  let { currentPath = '/' }: SidebarProps = $props()
+  let { currentPath = '/', onlock, onnavigate }: SidebarProps = $props()
 
   function handleNavigate(path: NavPath) {
-    navigate.goto(`/(app)${path}`)
+    onnavigate(path)
   }
 
   function handleSettingsNavigation() {
-    navigate.goto(`/(app)${settingsPath}`)
+    onnavigate(settingsPath)
   }
 
   function handleLock() {
-    void auth.lock()
+    onlock()
   }
 </script>
 

@@ -1,21 +1,15 @@
 <script lang="ts">
   import { toast } from 'svelte-sonner'
   import { AlertDialog } from 'bits-ui'
-  import { useNotes } from '$lib/note.svelte'
   import Input from '@/components/input.svelte'
   import Modal from '@/components/modal.svelte'
   import Select from '@/components/select.svelte'
   import Textarea from '@/components/textarea.svelte'
-  import { useCategories } from '$lib/category.svelte'
   import ColorPicker from '@/components/color-picker.svelte'
   import { NOTE_CONTENT_MAX, NOTE_DEFAULT_COLOR } from '$lib/consts'
-  import type { ModalEditProps } from '@/components/types'
-  import type { EntryNoteProps } from '$lib/types'
+  import type { ModalEditNoteProps } from '@/components/types'
 
-  const notes = useNotes()
-  const categories = useCategories()
-
-  let { open = $bindable(false), entry = null }: ModalEditProps<EntryNoteProps> = $props()
+  let { open = $bindable(false), entry = null, onupdate, categories }: ModalEditNoteProps = $props()
 
   let formTitle = $state('')
   let formError = $state('')
@@ -29,7 +23,7 @@
 
   const categoryItems = $derived([
     { label: 'No category', value: '' },
-    ...categories.list.map((cate) => ({ label: cate.icon + ' ' + cate.name, value: cate.id })),
+    ...categories.map((cate) => ({ label: cate.icon + ' ' + cate.name, value: cate.id })),
   ])
 
   $effect(() => {
@@ -60,7 +54,7 @@
 
     submitting = true
     try {
-      await notes.update(entry.id, {
+      await onupdate(entry.id, {
         title: formTitle.trim(),
         content: formContent || null,
         color: formColor,

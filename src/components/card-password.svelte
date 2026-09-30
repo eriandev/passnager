@@ -1,15 +1,10 @@
 <script lang="ts">
-  import { toast } from 'svelte-sonner'
-  import { invoke } from '@tauri-apps/api/core'
   import Copy from 'phosphor-svelte/lib/CopyIcon'
   import Trash from 'phosphor-svelte/lib/TrashIcon'
   import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
   import CardAction from '@/components/card-action.svelte'
-  import { usePasswords } from '$lib/password.svelte'
-  import { useCategories } from '$lib/category.svelte'
   import { CATEGORY_DEFAULT_COLOR } from '$lib/consts'
-  import type { CardProps } from '@/components/types'
-  import type { EntryPasswordProps } from '$lib/types'
+  import type { CardPasswordProps } from '@/components/types'
 
   const actions = [
     {
@@ -28,14 +23,13 @@
       action: () => ondelete(entry.id),
     },
   ] as const
-  const passwords = usePasswords()
-  const categories = useCategories()
+
+  let { entry, onedit, ondelete, oncopy, categories }: CardPasswordProps = $props()
+
   const color = $derived(
-    categories.list.find((category) => category.id === entry.categoryId)?.color ?? CATEGORY_DEFAULT_COLOR,
+    categories.find((category) => category.id === entry.categoryId)?.color ?? CATEGORY_DEFAULT_COLOR,
   )
   const avatarStyle = $derived(avatarStyleFor(color))
-
-  let { entry, onedit, ondelete }: CardProps<EntryPasswordProps> = $props()
 
   const initial = $derived(getInitial(entry.url))
 
@@ -72,13 +66,7 @@
   }
 
   async function copyPassword() {
-    try {
-      const decrypted = await passwords.decrypt(entry.id)
-      await invoke('copy_to_clipboard', { text: decrypted })
-      toast.success('Password copied to clipboard')
-    } catch {
-      toast.error('Failed to copy password')
-    }
+    await oncopy(entry.id)
   }
 </script>
 

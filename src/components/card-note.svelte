@@ -1,19 +1,11 @@
 <script lang="ts">
-  import { toast } from 'svelte-sonner'
-  import { invoke } from '@tauri-apps/api/core'
   import Copy from 'phosphor-svelte/lib/CopyIcon'
   import Trash from 'phosphor-svelte/lib/TrashIcon'
   import NoteBlank from 'phosphor-svelte/lib/NoteBlankIcon'
   import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
   import CardAction from '@/components/card-action.svelte'
-  import { useCategories } from '$lib/category.svelte'
   import { NOTE_DEFAULT_COLOR } from '$lib/consts'
-  import { useNotes } from '$lib/note.svelte'
-  import type { EntryNoteProps } from '$lib/types'
-  import type { CardProps } from '@/components/types'
-
-  const notes = useNotes()
-  const categories = useCategories()
+  import type { CardNoteProps } from '@/components/types'
 
   const actions = [
     {
@@ -33,18 +25,12 @@
     },
   ] as const
 
-  let { entry, onedit, ondelete }: CardProps<EntryNoteProps> = $props()
+  let { entry, onedit, ondelete, oncopy, categories }: CardNoteProps = $props()
 
-  const category = $derived(categories.list.find((c) => c.id === entry.categoryId))
+  const category = $derived(categories.find((c) => c.id === entry.categoryId))
 
   async function copyNote() {
-    try {
-      const plain = await notes.content(entry.id)
-      await invoke('copy_to_clipboard', { text: plain })
-      toast.success('Note copied to clipboard')
-    } catch {
-      toast.error('Failed to copy note')
-    }
+    await oncopy(entry.id)
   }
 </script>
 

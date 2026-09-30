@@ -3,15 +3,13 @@
   import { AlertDialog } from 'bits-ui'
   import Input from '@/components/input.svelte'
   import Modal from '@/components/modal.svelte'
-  import { useCategories } from '$lib/category.svelte'
   import { CATEGORY_DEFAULT_COLOR } from '$lib/consts'
   import ColorPicker from '@/components/color-picker.svelte'
-  import type { ModalAddProps } from '@/components/types'
+  import type { ModalAddCategoryProps } from '@/components/types'
 
-  const categories = useCategories()
-  const defaultIcons = ['📁', '🔑', '📧', '💳', '🌐', '📱', '💻', '🔒', '🕹️​', '🎵'] as const
+  const defaultIcons = ['📁', '🔑', '📧', '💳', '🌐', '📱', '💻', '🔒', '🕹️', '🎵'] as const
 
-  let { open = $bindable(false) }: ModalAddProps = $props()
+  let { open = $bindable(false), onadd }: ModalAddCategoryProps = $props()
 
   let formName = $state('')
   let formIcon = $state('')
@@ -41,7 +39,7 @@
 
     submitting = true
     try {
-      await categories.add({ name: formName, icon: formIcon || null, color: formColor })
+      await onadd({ name: formName, icon: formIcon || null, color: formColor })
       toast.success('Category created')
       open = false
     } catch (err) {
