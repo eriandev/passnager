@@ -3,10 +3,11 @@
   import { invoke } from '@tauri-apps/api/core'
   import Copy from 'phosphor-svelte/lib/CopyIcon'
   import Trash from 'phosphor-svelte/lib/TrashIcon'
-  import GlobeSimple from 'phosphor-svelte/lib/GlobeSimpleIcon'
   import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
   import CardAction from '@/components/card-action.svelte'
   import { usePasswords } from '$lib/password.svelte'
+  import { useCategories } from '$lib/category.svelte'
+  import { CATEGORY_DEFAULT_COLOR } from '$lib/consts'
   import type { CardProps } from '@/components/types'
   import type { EntryPasswordProps } from '$lib/types'
 
@@ -28,8 +29,15 @@
     },
   ] as const
   const passwords = usePasswords()
+  const categories = useCategories()
+  const color = $derived(
+    categories.list.find((category) => category.id === entry.categoryId)?.color ?? CATEGORY_DEFAULT_COLOR,
+  )
+  const avatarStyle = $derived(avatarStyleFor(color))
 
   let { entry, onedit, ondelete }: CardProps<EntryPasswordProps> = $props()
+
+  const initial = $derived(getInitial(entry.url))
 
   function getDomain(url: string): string {
     try {
@@ -39,13 +47,28 @@
     }
   }
 
-  function getFavicon(url: string): string {
-    try {
-      const domain = new URL(url).hostname
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
-    } catch {
-      return ''
-    }
+  function getInitial(url: string): string {
+    const domain = getDomain(url)
+    const letter = domain.replace(/^(https?:\/\/)?www\./, '').charAt(0)
+    return (letter || '?').toUpperCase()
+  }
+
+  function avatarStyleFor(hex: string): string {
+    const value = hex.replace('#', '')
+    const full =
+      value.length === 3
+        ? value
+            .split('')
+            .map((c) => c + c)
+            .join('')
+        : value
+    const r = parseInt(full.slice(0, 2), 16)
+    const g = parseInt(full.slice(2, 4), 16)
+    const b = parseInt(full.slice(4, 6), 16)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    if (luminance < 0.25) return `background-color: ${hex}40; color: #f4f4f5`
+    if (luminance > 0.85) return `background-color: ${hex}; color: #0a0a0a`
+    return `background-color: ${hex}40; color: ${hex}`
   }
 
   async function copyPassword() {
@@ -62,15 +85,14 @@
 <article
   class="flex items-center gap-x-4 rounded-card border-border-card bg-background-alt p-4 transition-colors hover:bg-muted"
 >
-  <section class="flex size-10 items-center justify-center rounded-lg bg-muted">
-    {#if getFavicon(entry.url)}
-      <img src={getFavicon(entry.url)} alt="{getDomain(entry.url)} favicon" class="size-6" />
-    {:else}
-      <GlobeSimple class="size-5 text-muted-foreground" />
-    {/if}
+  <section
+    class="text-md flex size-10 items-center justify-center rounded-lg font-mono leading-none font-semibold uppercase select-none"
+    style={avatarStyle}
+  >
+    {initial}
   </section>
 
-  <section class="min-w-0 flex-1">
+  <section class="grid min-w-0 flex-1">
     <span class="truncate text-sm font-medium text-foreground">
       {getDomain(entry.url)}
     </span>
