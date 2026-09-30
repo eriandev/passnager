@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.2](https://github.com/eriandev/passnager/compare/v0.3.1...v0.3.2) (2026-09-30)
+
+### 🐛 Bug Fixes
+
+- **frontend:** force the dark toaster theme ([1283e05](https://github.com/eriandev/passnager/commit/1283e055178f65a9519e58cc293eaf13bcb70bb6))
+
+### 🚜 Code Refactoring
+
+- **ci:** read CHANGELOG notes with awk instead of Python ([5c3ff4c](https://github.com/eriandev/passnager/commit/5c3ff4c4c47f9d1d877eebf7c1712a82d236b01f))
+
+### ⚙️ Continuous Integration
+
+- bump actions/checkout from v4 to v7 (Node 24) ([4f691e0](https://github.com/eriandev/passnager/commit/4f691e04872c673ac9e64fe6361f39345cf3006d))
+
 ## [0.3.1](https://github.com/eriandev/passnager/compare/v0.3.0...v0.3.1) (2026-09-30)
 
 ### 🐛 Bug Fixes
