@@ -2,4 +2,4 @@
   import { Toaster } from 'svelte-sonner'
 </script>
 
-<Toaster position="bottom-right" richColors />
+<Toaster theme="dark" position="bottom-right" richColors />
