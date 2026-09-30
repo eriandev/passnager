@@ -1,19 +1,56 @@
 name: Release Build
 
+# Triggered by pushing the tag that `release-it` created locally:
+#
+#   pnpm release && git push origin main --follow-tags
+#
+# The version, the CHANGELOG and the tag are all produced by `release-it` on
+# your machine (see .release-it.json), so this workflow never decides what the
+# next version is. It only reacts to the tag, and because the release is
+# created by `tauri-action` *after* the `test` job, a failing vault test means
+# there is no release and no installers at all, instead of a published release
+# with missing binaries.
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
 
 jobs:
+  test:
+    name: Backend tests
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies 🐧
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+
+      - name: Setup Rust stable 🦀
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache ♻️
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Test 🧪
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
   build:
+    needs: test
+
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: ubuntu-22.04
+          - platform: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
             args: '--target x86_64-unknown-linux-gnu'
           - platform: windows-latest
@@ -44,7 +81,7 @@ jobs:
           workspaces: './src-tauri -> target'
 
       - name: Install Linux dependencies 🐧
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
@@ -52,13 +89,62 @@ jobs:
       - name: Install dependencies 💼
         run: pnpm install --frozen-lockfile
 
+      # The release title is the tag exactly as pushed (`v1.2.3`), so the release
+      # heading and the tag always read identically. The body is exactly the
+      # section that `release-it` just added to CHANGELOG.md for that version. The
+      # heading line itself is dropped, because the title already says which
+      # version this is and the compare link is noise once you are already on the
+      # release page.
+      #
+      # The CHANGELOG stores bare versions (`## [1.2.3]`), so the `v` is stripped
+      # for the lookup only.
+      #
+      # It fails loudly when the version is missing from the CHANGELOG instead of
+      # publishing an empty release, which is the failure mode worth being strict
+      # about: an empty body is much harder to notice than a red build.
+      - name: Read version notes from CHANGELOG 📝
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          python3 - "$VERSION" >> "$GITHUB_OUTPUT" <<'PY'
+          import re, sys
+
+          version = sys.argv[1]
+          lines = open("CHANGELOG.md", encoding="utf-8").read().splitlines()
+
+          # "## [x.x.x](compare-url) (date)" for released versions and a bare
+          # "## x.x.x (date)" for the initial one.
+          # Accept both
+          heading = re.compile(r"^##\s+\[?" + re.escape(version) + r"\]?(\(|\s|$)")
+
+          start = next((i for i, line in enumerate(lines) if heading.match(line)), None)
+          if start is None:
+              sys.exit(f"CHANGELOG.md has no section for version {version!r}")
+
+          end = next(
+              (i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")),
+              len(lines),
+          )
+          body = "\n".join(lines[start + 1 : end]).strip()
+          if not body:
+              sys.exit(f"the {version!r} section of CHANGELOG.md is empty")
+
+          # A semver prerelease such as x.x.x-rc.1 becomes a GitHub prerelease.
+          prerelease = "true" if "-" in version else "false"
+
+          print(f"prerelease={prerelease}")
+          print("release_body<<CHANGELOG_EOF")
+          print(body)
+          print("CHANGELOG_EOF")
+          PY
+
       - name: Build Tauri app 🛠️
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.event.release.tag_name }}
-          releaseName: ${{ github.event.release.tag_name }}
-          releaseBody: ${{ github.event.release.body }}
-          prerelease: ${{ github.event.release.prerelease }}
+          tagName: ${{ github.ref_name }}
+          releaseName: ${{ github.ref_name }}
+          releaseBody: ${{ steps.notes.outputs.release_body }}
+          prerelease: ${{ steps.notes.outputs.prerelease }}
           args: ${{ matrix.args }}
