@@ -21,11 +21,19 @@
 
 ## ✨ About
 
-**Passnager** is a desktop password manager focused on privacy, simplicity and local data ownership.
+**Passnager** is a desktop password and notes manager focused on privacy, simplicity and local data ownership.
 
-Your vault is stored locally on your device and protected with modern cryptographic primitives, without requiring a cloud account or remote server.
+Your vault (passwords and notes alike) is stored locally on your device and protected with modern cryptographic primitives, without requiring a cloud account or remote server.
 
 The project is built with **SvelteKit + Tauri 2**, combining a modern web UI with a lightweight native desktop application.
+
+## ⭐ Features
+
+- **Passwords** — store, search and copy login credentials from an easy-to-browse list.
+- **Encrypted notes** — free-form notes encrypted at rest, organised with colours and categories.
+- **Categories** — colour-coded groups that keep the vault tidy.
+- **Session lock** — nothing in the vault is reachable while locked; the master password opens it.
+- **Clipboard** — copy a decrypted value straight to the clipboard.
 
 ## 🖥️ Preview
 
@@ -46,11 +54,22 @@ Sensitive vault data is encrypted before being persisted locally using:
 | **Random nonce** | Unique nonce per encryption operation |
 | **SQLite**       | Local persistent storage              |
 
-The application does not require your vault to be stored on a remote server.
+All vault access (passwords, notes and categories) is routed through the unlocked session, so nothing can be read or written while the vault is locked. Encrypted content is decrypted on demand rather than cached in memory, and the database schema validates stored values (colour format, note length) before they are written.
+
+The application does not require your vault to be stored on a remote server, and it never phones home either: fonts are self-hosted, password cards render locally-generated initial avatars instead of fetching third-party favicons, and a strict Content Security Policy blocks every remote origin (in dev and release builds alike).
 
 > [!WARNING]  
 > Passnager is currently under active development and has **not been independently security audited**.
 > Do not rely on it for critical secrets until you have reviewed the implementation and accepted the associated risks.
+
+### 📝 Logging
+
+Logs help explain failures without guessing:
+
+- **Development builds** print log entries to the terminal as they happen.
+- **Release builds** write to `passnager.log` in the app's config directory, next to the vault file.
+
+When a release build fails to start, nothing you hold (a password, a note or a category) has been read or written — the log records the reason it refused to launch instead.
 
 ## 🛠️ Tech Stack
 
@@ -130,6 +149,7 @@ Release builds are generated automatically through GitHub Actions.
 ## 🗺️ Roadmap
 
 - [x] Password categories
+- [x] Encrypted notes
 - [ ] Password generator
 - [ ] Password strength analysis
 - [ ] Import / export
