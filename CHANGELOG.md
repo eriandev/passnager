@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.1](https://github.com/eriandev/passnager/compare/v0.3.0...v0.3.1) (2026-09-30)
+
+### 🐛 Bug Fixes
+
+- **ci:** parse CHANGELOG notes with bash and an explicit Python ([5f7008b](https://github.com/eriandev/passnager/commit/5f7008b84543f42fb5f0379ba958bd71fee4c99d))
+- **frontend:** default the category icon and show it in every select ([82ba4ac](https://github.com/eriandev/passnager/commit/82ba4ac054765dd2180d9e0323766cadfc33c195))
+
+### 🚜 Code Refactoring
+
+- **frontend:** receive vault data and actions from parents ([7c2874d](https://github.com/eriandev/passnager/commit/7c2874d260b702d2476522aa766c227d23afaf7d))
+- **frontend:** wire component props in app routes ([1aed683](https://github.com/eriandev/passnager/commit/1aed683ffeafb9d00be49f357c1f5f11ce9bd1bb))
+
 ## [0.3.0](https://github.com/eriandev/passnager/compare/v0.2.0...v0.3.0) (2026-09-30)
 
 ### ✨ Features
