@@ -5,11 +5,19 @@
 @custom-variant dark (&:is(.dark *));
 
 @font-face {
-  font-family: 'Cal Sans';
+  font-family: 'Inter';
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/inter-variable.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Source Code Pro';
   font-weight: 600;
   font-style: normal;
   font-display: swap;
-  src: url('/fonts/calsans-600.woff2') format('woff2');
+  src: url('/fonts/source-code-pro-600.woff2') format('woff2');
 }
 
 :root {
@@ -118,8 +126,6 @@
 
   --font-sans: 'Inter', 'sans-serif';
   --font-mono: 'Source Code Pro', 'monospace';
-  --font-alt: 'Courier', 'sans-serif';
-  --font-display: 'Cal Sans', 'sans-serif';
 
   @keyframes accordion-down {
     from {
