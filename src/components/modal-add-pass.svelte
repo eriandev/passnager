@@ -17,7 +17,7 @@
 
   const categoryItems = $derived([
     { label: 'No category', value: '' },
-    ...categories.map((category) => ({ label: category.name, value: category.id })),
+    ...categories.map((cate) => ({ label: cate.icon + ' ' + cate.name, value: cate.id })),
   ])
   $effect(() => {
     if (open) {

@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { CATEGORY_DEFAULT_ICON } from '$lib/consts'
 import type { EntryCategoryData, EntryCategoryProps } from '$lib/types'
 
 let loading = $state(true)
@@ -22,7 +23,7 @@ export function useCategories() {
   const add = async (data: EntryCategoryData) => {
     const entry = await invoke<EntryCategoryProps>('add_category', {
       name: data.name,
-      icon: data.icon ?? null,
+      icon: data.icon || CATEGORY_DEFAULT_ICON,
       color: data.color ?? null,
     })
     list = [...list, entry].sort(byName)
@@ -32,12 +33,14 @@ export function useCategories() {
     await invoke('update_category', {
       id,
       name: data.name,
-      icon: data.icon ?? null,
+      icon: data.icon || CATEGORY_DEFAULT_ICON,
       color: data.color ?? null,
     })
     list = list
       .map((entry) =>
-        entry.id === id ? { ...entry, name: data.name, icon: data.icon ?? null, color: data.color ?? null } : entry,
+        entry.id === id
+          ? { ...entry, name: data.name, icon: data.icon || CATEGORY_DEFAULT_ICON, color: data.color ?? null }
+          : entry,
       )
       .sort(byName)
   }

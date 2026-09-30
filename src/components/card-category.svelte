@@ -2,7 +2,7 @@
   import Trash from 'phosphor-svelte/lib/TrashIcon'
   import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
   import CardAction from '@/components/card-action.svelte'
-  import { CATEGORY_DEFAULT_COLOR } from '$lib/consts'
+  import { CATEGORY_DEFAULT_COLOR, CATEGORY_DEFAULT_ICON } from '$lib/consts'
   import type { CardProps } from '@/components/types'
   import type { EntryCategoryProps } from '$lib/types'
 
@@ -29,7 +29,7 @@
     class="flex size-12 items-center justify-center rounded-xl text-xl"
     style="background-color: {entry.color || CATEGORY_DEFAULT_COLOR}40"
   >
-    {entry.icon || '📁'}
+    {entry.icon || CATEGORY_DEFAULT_ICON}
   </section>
 
   <section class="min-w-0 flex-1">

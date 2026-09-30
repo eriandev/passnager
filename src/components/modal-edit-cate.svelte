@@ -3,11 +3,9 @@
   import { AlertDialog } from 'bits-ui'
   import Input from '@/components/input.svelte'
   import Modal from '@/components/modal.svelte'
-  import { CATEGORY_DEFAULT_COLOR } from '$lib/consts'
+  import { CATEGORY_DEFAULT_COLOR, CATEGORY_DEFAULT_ICON, CATEGORY_ICONS } from '$lib/consts'
   import ColorPicker from '@/components/color-picker.svelte'
   import type { ModalEditCategoryProps } from '@/components/types'
-
-  const defaultIcons = ['📁', '🔑', '📧', '💳', '🌐', '📱', '💻', '🔒'] as const
 
   let { open = $bindable(false), entry = null, onupdate }: ModalEditCategoryProps = $props()
 
@@ -23,7 +21,7 @@
       formError = ''
       formName = entry.name
       formCategoryId = entry.id
-      formIcon = entry.icon || ''
+      formIcon = entry.icon || CATEGORY_DEFAULT_ICON
       formColor = entry.color || CATEGORY_DEFAULT_COLOR
     }
   })
@@ -64,7 +62,7 @@
       <div class="grid gap-y-1">
         <span id="category-icon-label">Icon</span>
         <div role="group" aria-labelledby="category-icon-label" class="flex flex-wrap gap-2">
-          {#each defaultIcons as icon (icon)}
+          {#each CATEGORY_ICONS as icon (icon)}
             <button
               type="button"
               class={[
