@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.3.0](https://github.com/eriandev/passnager/compare/v0.2.0...v0.3.0) (2026-09-30)
+
+### ✨ Features
+
+- **color:** validate colors and note body length in the schema ([65ba4e3](https://github.com/eriandev/passnager/commit/65ba4e36292c91603234507f86fd51564a7dc46d))
+- **frontend:** replace remote favicons with a monospace initial avatar ([384beb4](https://github.com/eriandev/passnager/commit/384beb43718b44a05f9a1c6024cc9631685488eb))
+- **frontend:** self-host fonts & drop Google Fonts ([9345960](https://github.com/eriandev/passnager/commit/93459606c8602c9d818cc6b0a34b4ac6b75043a9))
+- **logging:** add a logger that splits console and file by build profile ([22f1621](https://github.com/eriandev/passnager/commit/22f1621992c649c85b9b64a22e9ce0c1c1d6096c))
+- **notes:** implements encrypted notes ([8775e21](https://github.com/eriandev/passnager/commit/8775e210fe0ab09c0070834ceb71962ff7d1f6ff))
+- **security:** add a strict CSP that allows no remote origins ([6f3e25d](https://github.com/eriandev/passnager/commit/6f3e25d5098de08133d2ff69d9f746f3c52f47ca))
+
+### 🐛 Bug Fixes
+
+- **security:** gate metadata-only note and password updates ([74ae89f](https://github.com/eriandev/passnager/commit/74ae89f339ebbdf016a0cbd09fac760ce1a6ddfe))
+- **security:** route all vault access through the session ([c97e7ec](https://github.com/eriandev/passnager/commit/c97e7ec76c426bd0de91c2da9cd3e55f19f5828f))
+
+### 📚 Documentation
+
+- describe the new features, security & update preview ([dda4ca5](https://github.com/eriandev/passnager/commit/dda4ca5cc4211db2a7a45206bdcf083d945b865a))
+
+### 📝 Tests
+
+- **backend:** cover color, crypto, session and schema invariants ([cce5bce](https://github.com/eriandev/passnager/commit/cce5bcefcdfa108260f770bd8e266cd09653674f))
+
+### 🚜 Code Refactoring
+
+- **crypto:** make KDF cost injectable ([e7928d5](https://github.com/eriandev/passnager/commit/e7928d54dc90d5dcca3a9ec9b788073f27ea2ede))
+- drop dead Settings type ([179da15](https://github.com/eriandev/passnager/commit/179da1531530c993d151db653f918aa12fa0010d))
+- **master:** replace tuples with structs ([a9f4654](https://github.com/eriandev/passnager/commit/a9f4654bc0ccb5d1066d4b6615ea19abbe03b750))
+- move color picker to component ([e243bfb](https://github.com/eriandev/passnager/commit/e243bfbcf992cc62ea20b44922a83681f39673b5))
+- **notes:** decrypt on demand instead of caching contents ([0d9645c](https://github.com/eriandev/passnager/commit/0d9645cb1076c72147345575d558e8ea9ae26190))
+- **startup:** add a startup module that aborts loudly and logs why ([b8912f0](https://github.com/eriandev/passnager/commit/b8912f06c329e9dd24eb4ef201312621526be172))
+- use consts for default color values and the max number of chars for note content ([51d533d](https://github.com/eriandev/passnager/commit/51d533dafe6e4b008e55ff8b44cf9d0d33b91bce))
+
+### ⚙️ Continuous Integration
+
+- **release:** build from tags, gate on backend tests, and read notes from the changelog ([70b135b](https://github.com/eriandev/passnager/commit/70b135bb57d9efd5c219b2c7e4654bd3d3bc2d59))
+- run lint, typecheck and backend tests on push and pull requests ([b243642](https://github.com/eriandev/passnager/commit/b243642e1c8e916b66f5aea3f9759483df270b6e))
+
+### 🎨 Styles
+
+- format code ([88364e6](https://github.com/eriandev/passnager/commit/88364e6945db9d0bad2a160783da384a1f966f19))
+
 ## [0.2.0](https://github.com/eriandev/passnager/compare/v0.1.1...v0.2.0) (2026-09-26)
 
 ### ✨ Features
