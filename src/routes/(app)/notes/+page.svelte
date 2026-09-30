@@ -1,16 +1,17 @@
 <script lang="ts">
   import { toast } from 'svelte-sonner'
+  import { invoke } from '@tauri-apps/api/core'
   import Plus from 'phosphor-svelte/lib/PlusIcon'
-  import ModalAddNote from '@/components/modal-add-note.svelte'
-  import ModalEditNote from '@/components/modal-edit-note.svelte'
-  import NoteCard from '@/components/card-note.svelte'
-  import { useCategories } from '$lib/category.svelte'
   import { useAuth } from '$lib/auth.svelte'
   import { useNotes } from '$lib/note.svelte'
   import Input from '@/components/input.svelte'
   import Alert from '@/components/alert.svelte'
   import Button from '@/components/button.svelte'
   import Select from '@/components/select.svelte'
+  import CardNote from '@/components/card-note.svelte'
+  import { useCategories } from '$lib/category.svelte'
+  import ModalAddNote from '@/components/modal-add-note.svelte'
+  import ModalEditNote from '@/components/modal-edit-note.svelte'
   import type { EntryNoteProps } from '$lib/types'
 
   const auth = useAuth()
@@ -55,6 +56,16 @@
   function confirmDelete(id: string) {
     deleteTargetId = id
     showDeleteAlert = true
+  }
+
+  async function handleCopy(id: string) {
+    try {
+      const plain = await notes.content(id)
+      await invoke('copy_to_clipboard', { text: plain })
+      toast.success('Note copied to clipboard')
+    } catch {
+      toast.error('Failed to copy note')
+    }
   }
 
   async function handleDelete() {
@@ -103,7 +114,13 @@
     {:else}
       <div class="flex flex-col gap-3">
         {#each filtered as entry (entry.id)}
-          <NoteCard {entry} onedit={openEdit} ondelete={confirmDelete} />
+          <CardNote
+            {entry}
+            onedit={openEdit}
+            oncopy={handleCopy}
+            ondelete={confirmDelete}
+            categories={categories.list}
+          />
         {/each}
       </div>
     {/if}
@@ -117,8 +134,8 @@
   </footer>
 </div>
 
-<ModalAddNote bind:open={showAddModal} />
-<ModalEditNote bind:open={showEditModal} entry={editingEntry} />
+<ModalAddNote bind:open={showAddModal} onadd={notes.add} categories={categories.list} />
+<ModalEditNote bind:open={showEditModal} entry={editingEntry} onupdate={notes.update} categories={categories.list} />
 <Alert
   title="Delete note"
   bind:open={showDeleteAlert}

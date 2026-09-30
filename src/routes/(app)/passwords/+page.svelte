@@ -1,14 +1,15 @@
 <script lang="ts">
   import { toast } from 'svelte-sonner'
-  import { useAuth } from '$lib/auth.svelte'
+  import { invoke } from '@tauri-apps/api/core'
   import Plus from 'phosphor-svelte/lib/PlusIcon'
+  import { useAuth } from '$lib/auth.svelte'
   import Input from '@/components/input.svelte'
   import Alert from '@/components/alert.svelte'
   import Button from '@/components/button.svelte'
   import Select from '@/components/select.svelte'
   import { usePasswords } from '$lib/password.svelte'
   import { useCategories } from '$lib/category.svelte'
-  import PasswordCard from '@/components/card-password.svelte'
+  import CardPassword from '@/components/card-password.svelte'
   import ModalAddPass from '@/components/modal-add-pass.svelte'
   import ModalEditPass from '@/components/modal-edit-pass.svelte'
   import type { EntryPasswordProps } from '$lib/types'
@@ -61,6 +62,16 @@
     showDeleteAlert = true
   }
 
+  async function handleCopy(id: string) {
+    try {
+      const decrypted = await passwords.decrypt(id)
+      await invoke('copy_to_clipboard', { text: decrypted })
+      toast.success('Password copied to clipboard')
+    } catch {
+      toast.error('Failed to copy password')
+    }
+  }
+
   async function handleDelete() {
     if (!deleteTargetId) return
     try {
@@ -107,7 +118,13 @@
     {:else}
       <div class="flex flex-col gap-3">
         {#each filtered as entry (entry.id)}
-          <PasswordCard {entry} onedit={openEdit} ondelete={confirmDelete} />
+          <CardPassword
+            {entry}
+            onedit={openEdit}
+            ondelete={confirmDelete}
+            oncopy={handleCopy}
+            categories={categories.list}
+          />
         {/each}
       </div>
     {/if}
@@ -121,8 +138,13 @@
   </footer>
 </div>
 
-<ModalAddPass bind:open={showAddModal} />
-<ModalEditPass bind:open={showEditModal} entry={editingEntry} />
+<ModalAddPass bind:open={showAddModal} onadd={passwords.add} categories={categories.list} />
+<ModalEditPass
+  bind:open={showEditModal}
+  entry={editingEntry}
+  onupdate={passwords.update}
+  categories={categories.list}
+/>
 <Alert
   title="Delete password"
   bind:open={showDeleteAlert}

@@ -82,8 +82,8 @@
   </footer>
 </div>
 
-<ModalAddCate bind:open={showAddModal} />
-<ModalEditCate bind:open={showEditModal} entry={editingEntry} />
+<ModalAddCate bind:open={showAddModal} onadd={categories.add} />
+<ModalEditCate bind:open={showEditModal} entry={editingEntry} onupdate={categories.update} />
 <Alert
   title="Delete category"
   bind:open={showDeleteAlert}
