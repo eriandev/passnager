@@ -1,9 +1,22 @@
 use aes_gcm::{
-    aead::{Aead, KeyInit},
+    aead::{Aead, AeadCore, KeyInit},
     Aes256Gcm, Nonce,
 };
 use argon2::{Algorithm, Argon2, Version};
 use rand::RngCore;
+
+/// The nonce AES-GCM is used with here: 96 bits, which is the size `Aes256Gcm` is
+/// instantiated with and therefore the size [`generate_nonce`] returns.
+///
+/// It is worth naming because it is not only the generated nonces that are 12
+/// bytes — it is also what a nonce read back out of a `BLOB` column has to be, and
+/// nothing about a database column guarantees that. [`stored_nonce`] is what turns
+/// it from an assumption into something checked.
+const NONCE_LEN: usize = 12;
+
+/// The nonce type `Aes256Gcm` actually accepts, spelled once so the helper below
+/// does not have to infer it from a call site.
+type GcmNonce = Nonce<<Aes256Gcm as AeadCore>::NonceSize>;
 
 /// Argon2id cost parameters.
 ///
@@ -48,6 +61,27 @@ pub fn generate_dek() -> [u8; 32] {
     dek
 }
 
+/// A nonce that came out of a database column, checked before it reaches AES-GCM.
+///
+/// `Nonce::from_slice` asserts its length and panics when it is wrong. That is
+/// harmless for a nonce this module has just generated, and it is fatal for one
+/// that came from a `BLOB`: a vault truncated by a crash, a half-written row, a
+/// file edited by hand or one built on purpose would abort the process — and
+/// because the release profile is `panic = "abort"`, no log entry would be written
+/// either. Through [`unwrap_dek`] that turns a damaged vault into an app that
+/// cannot start, instead of a master password that does not work.
+///
+/// The check belongs here, at the one place stored bytes become a `Nonce`, so no
+/// caller can reach the panic by reading a column: the wrapped-DEK nonce and the
+/// per-row nonces are separate columns in separate tables, and both arrive from
+/// the database.
+fn stored_nonce(bytes: &[u8]) -> Result<&GcmNonce, String> {
+    if bytes.len() != NONCE_LEN {
+        return Err(format!("Stored nonce must be {NONCE_LEN} bytes"));
+    }
+    Ok(Nonce::from_slice(bytes))
+}
+
 pub fn derive_kek(password: &[u8], salt: &[u8]) -> Result<[u8; 32], String> {
     derive_kek_with_params(password, salt, KdfParams::default())
 }
@@ -76,6 +110,8 @@ pub fn derive_kek_with_params(
 pub fn wrap_dek(dek: &[u8; 32], kek: &[u8; 32]) -> Result<(Vec<u8>, Vec<u8>), String> {
     let cipher = Aes256Gcm::new_from_slice(kek).map_err(|e| e.to_string())?;
     let nonce_bytes = generate_nonce();
+    // `from_slice` is safe on a generated nonce: the array above is
+    // `[u8; NONCE_LEN]` by construction, which is the case it asserts.
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     let ciphertext = cipher
@@ -91,7 +127,9 @@ pub fn unwrap_dek(
     kek: &[u8; 32],
 ) -> Result<[u8; 32], String> {
     let cipher = Aes256Gcm::new_from_slice(kek).map_err(|e| e.to_string())?;
-    let nonce = Nonce::from_slice(dek_nonce);
+    // Checked before the cipher is used, so a malformed column is reported as a
+    // damaged vault instead of aborting the process.
+    let nonce = stored_nonce(dek_nonce)?;
 
     let plaintext = cipher
         .decrypt(nonce, wrapped_dek)
@@ -109,6 +147,7 @@ pub fn unwrap_dek(
 pub fn encrypt_password(plaintext: &[u8], dek: &[u8; 32]) -> Result<(Vec<u8>, Vec<u8>), String> {
     let cipher = Aes256Gcm::new_from_slice(dek).map_err(|e| e.to_string())?;
     let nonce_bytes = generate_nonce();
+    // Same as `wrap_dek`: generated, so the length `from_slice` asserts holds.
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     let ciphertext = cipher
@@ -120,7 +159,8 @@ pub fn encrypt_password(plaintext: &[u8], dek: &[u8; 32]) -> Result<(Vec<u8>, Ve
 
 pub fn decrypt_password(encrypted: &[u8], nonce: &[u8], dek: &[u8; 32]) -> Result<Vec<u8>, String> {
     let cipher = Aes256Gcm::new_from_slice(dek).map_err(|e| e.to_string())?;
-    let nonce = Nonce::from_slice(nonce);
+    // The one caller is `decrypt_*_by_id`, so this nonce is whatever the row holds.
+    let nonce = stored_nonce(nonce)?;
 
     let plaintext = cipher
         .decrypt(nonce, encrypted)
@@ -214,6 +254,74 @@ mod tests {
         let s = generate_salt();
         assert_eq!(s.len(), 16);
         assert_ne!(s, generate_salt());
+    }
+
+    /// The one value that reaches AES-GCM straight from a database column is the
+    /// nonce, and `Nonce::from_slice` asserts its length instead of checking it. So
+    /// a truncated or hand-edited row aborts the process rather than failing the
+    /// call — and under `panic = "abort"` there is no log line to explain it.
+    ///
+    /// Every length a stored nonce must never be, refused rather than fatal. The
+    /// exact message is also what proves the check runs *before* the cipher: a
+    /// 13-byte or 32-byte nonce would fail authentication anyway, and asserting
+    /// the same error for all of them is only possible if nothing tried to decrypt.
+    #[test]
+    fn a_stored_nonce_of_the_wrong_length_is_refused_rather_than_panicking() {
+        let dek = generate_dek();
+        let salt = generate_salt();
+        let kek = derive_kek_with_params(b"correct horse", &salt, cheap()).unwrap();
+        let (ciphertext, _) = encrypt_password(b"secret value", &dek).unwrap();
+
+        for len in [0usize, 1, 11, 13, 16, 32] {
+            let stored = vec![0u8; len];
+            assert_eq!(
+                decrypt_password(&ciphertext, &stored, &dek).unwrap_err(),
+                "Stored nonce must be 12 bytes",
+                "a {len}-byte row nonce must be refused, not fatal"
+            );
+            assert_eq!(
+                unwrap_dek(&ciphertext, &stored, &kek).unwrap_err(),
+                "Stored nonce must be 12 bytes",
+                "a {len}-byte wrapped-dek nonce must be refused, not fatal"
+            );
+        }
+    }
+
+    /// A well-formed but *wrong* nonce has to keep its own error, or the check
+    /// above would be masking an authentication failure as a damaged vault. This
+    /// is the case a truncated vault and a tampered one must not be confused for.
+    #[test]
+    fn a_stored_nonce_of_the_right_length_still_fails_authentication() {
+        let dek = generate_dek();
+        let salt = generate_salt();
+        let kek = derive_kek_with_params(b"correct horse", &salt, cheap()).unwrap();
+
+        let (_, nonce) = encrypt_password(b"secret value", &dek).unwrap();
+        assert_eq!(nonce.len(), NONCE_LEN);
+
+        // A valid length that does not match the ciphertext this key produced.
+        let other = [1u8; NONCE_LEN];
+        assert!(decrypt_password(b"a body plus a tag", &other, &dek).is_err());
+
+        let wrapped = [2u8; 32 + TAG_LEN];
+        assert_eq!(
+            unwrap_dek(&wrapped, &other, &kek).unwrap_err(),
+            "Incorrect master password",
+            "a wrong-but-well-formed dek nonce is a wrong password, not a damaged vault"
+        );
+    }
+
+    /// `NONCE_LEN` is the entire content of `stored_nonce`, so it is pinned to the
+    /// type instead of trusted: a dependency bump that changed the nonce size
+    /// would otherwise turn the check into a rejection of every nonce this app
+    /// writes, and the failure would show up in a vault rather than here.
+    #[test]
+    fn the_checked_length_is_the_one_aes_gcm_uses() {
+        // Asked of AES-GCM itself rather than hardcoded a second time, so the
+        // check cannot quietly start rejecting every nonce this app writes.
+        let from_aes = <Aes256Gcm as AeadCore>::generate_nonce(&mut rand::thread_rng());
+        assert_eq!(NONCE_LEN, from_aes.len());
+        assert_eq!(NONCE_LEN, generate_nonce().len());
     }
 
     #[test]
