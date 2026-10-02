@@ -125,6 +125,18 @@ pub fn db_path(app: &AppHandle) -> std::path::PathBuf {
 
 /// The whole schema, kept out of `init_db` so the constraints can be tested
 /// against an in-memory database instead of only against a real vault on disk.
+///
+/// The three numbers the blob columns are pinned to are not preferences, they are
+/// facts about the crypto module: a 16 byte `crypto::generate_salt`, a 12 byte
+/// `crypto::generate_nonce`, and a 32 byte DEK plus the 16 byte AES-GCM tag.
+/// `crypto::tests` asserts the same facts from the other side, so neither drifts
+/// alone. The rows themselves are rejected by `crypto::stored_nonce` before any of
+/// this matters — these constraints exist so a malformed row cannot be written at
+/// all, and so the shape is documented next to the data.
+///
+/// `CREATE TABLE IF NOT EXISTS` leaves an already-created table untouched, so a
+/// vault written by an earlier build keeps the schema it has. The Rust-side check
+/// is what protects those; these only apply to tables created from here on.
 pub(crate) const SCHEMA: &str = "
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
@@ -133,9 +145,10 @@ pub(crate) const SCHEMA: &str = "
 
         CREATE TABLE IF NOT EXISTS master_password (
             id INTEGER PRIMARY KEY CHECK (id = 1),
-            salt BLOB NOT NULL,
-            wrapped_dek BLOB NOT NULL,
-            dek_nonce BLOB NOT NULL
+            salt BLOB NOT NULL CHECK (length(salt) = 16),
+            -- The DEK is 32 bytes and AES-GCM appends a 16 byte tag.
+            wrapped_dek BLOB NOT NULL CHECK (length(wrapped_dek) = 48),
+            dek_nonce BLOB NOT NULL CHECK (length(dek_nonce) = 12)
         );
 
         CREATE TABLE IF NOT EXISTS categories (
@@ -151,7 +164,7 @@ pub(crate) const SCHEMA: &str = "
             id TEXT PRIMARY KEY,
             username TEXT NOT NULL,
             encrypted_password BLOB NOT NULL,
-            nonce BLOB NOT NULL,
+            nonce BLOB NOT NULL CHECK (length(nonce) = 12),
             url TEXT NOT NULL,
             category_id TEXT,
             created_at TEXT NOT NULL,
@@ -163,7 +176,7 @@ pub(crate) const SCHEMA: &str = "
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             encrypted_content BLOB NOT NULL,
-            nonce BLOB NOT NULL,
+            nonce BLOB NOT NULL CHECK (length(nonce) = 12),
             color TEXT,
             category_id TEXT,
             created_at TEXT NOT NULL,
@@ -202,6 +215,7 @@ pub fn unix_timestamp() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::crypto;
 
     fn in_memory() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
@@ -209,10 +223,15 @@ mod tests {
         conn
     }
 
+    /// The nonce is written as `zeroblob(12)` rather than passed in: it is the same
+    /// on every row, and the point of most of these tests is a different column
+    /// entirely. Before the `CHECK` landed this fixture used a one byte `x'00'`,
+    /// which the constraint now refuses — a reminder that the fixtures were
+    /// writing a shape the app never writes.
     fn insert_note(conn: &Connection, id: &str, body: &[u8], color: Option<&str>) -> SqlResult<()> {
         conn.execute(
             "INSERT INTO notes (id, title, encrypted_content, nonce, color, created_at, updated_at) \
-             VALUES (?1, 't', ?2, x'00', ?3, '1', '1')",
+             VALUES (?1, 't', ?2, zeroblob(12), ?3, '1', '1')",
             rusqlite::params![id, body, color],
         )
         .map(|_| ())
@@ -232,6 +251,127 @@ mod tests {
     /// silently start rejecting legitimate bodies, and `crypto::tests` asserts the
     /// same fact from the other side. Both are here so neither drifts alone.
     const TAG_LEN: usize = 16;
+
+    fn insert_master(
+        conn: &Connection,
+        salt: &[u8],
+        wrapped_dek: &[u8],
+        dek_nonce: &[u8],
+    ) -> SqlResult<usize> {
+        conn.execute(
+            "INSERT INTO master_password (id, salt, wrapped_dek, dek_nonce) \
+             VALUES (1, ?1, ?2, ?3)",
+            rusqlite::params![salt, wrapped_dek, dek_nonce],
+        )
+    }
+
+    fn insert_password(conn: &Connection, id: &str, nonce: &[u8]) -> SqlResult<usize> {
+        conn.execute(
+            "INSERT INTO passwords (id, username, encrypted_password, nonce, url, created_at, updated_at) \
+             VALUES (?1, 'u', x'00', ?2, 'https://example.test', '1', '1')",
+            rusqlite::params![id, nonce],
+        )
+    }
+
+    /// Every blob the crypto module reads is written by that module and nowhere
+    /// else, so the schema pins the three lengths against the functions that
+    /// produce them. A dependency bump that changed the salt, the nonce or the tag
+    /// size would fail here instead of silently rejecting every row the app writes.
+    #[test]
+    fn the_pinned_blob_lengths_are_the_ones_the_crypto_module_produces() {
+        assert_eq!(16, crypto::generate_salt().len());
+        assert_eq!(12, crypto::generate_nonce().len());
+
+        // `wrap_dek` only needs the key to be 32 bytes, so an all-zero one keeps
+        // this test off the Argon2 path it is not about.
+        let (wrapped, _) = crypto::wrap_dek(&crypto::generate_dek(), &[0u8; 32]).unwrap();
+        assert_eq!(48, wrapped.len(), "32 byte DEK plus the 16 byte tag");
+    }
+
+    #[test]
+    fn accepts_the_master_row_the_setup_command_writes() {
+        let conn = in_memory();
+        let salt = vec![0u8; 16];
+        let wrapped = vec![0u8; 32 + TAG_LEN];
+        let nonce = vec![0u8; 12];
+        insert_master(&conn, &salt, &wrapped, &nonce).expect("the shapes setup writes must fit");
+    }
+
+    /// These three columns are handed to the crypto module untouched, and
+    /// `Nonce::from_slice` asserts the length instead of checking it. A row that
+    /// reached the database with a short value would abort the process, so the
+    /// constraint is what keeps it out.
+    #[test]
+    fn rejects_a_master_row_whose_blobs_are_the_wrong_length() {
+        let conn = in_memory();
+        let salt = vec![0u8; 16];
+        let wrapped = vec![0u8; 32 + TAG_LEN];
+        let nonce = vec![0u8; 12];
+
+        for bad_salt in [0usize, 1, 15, 17, 32] {
+            assert!(
+                insert_master(&conn, &vec![0u8; bad_salt], &wrapped, &nonce).is_err(),
+                "a {bad_salt}-byte salt must be rejected"
+            );
+        }
+        for bad_wrapped in [0usize, 1, 32, 47, 49, 64] {
+            assert!(
+                insert_master(&conn, &salt, &vec![0u8; bad_wrapped], &nonce).is_err(),
+                "a {bad_wrapped}-byte wrapped dek must be rejected"
+            );
+        }
+        for bad_nonce in [0usize, 1, 8, 11, 13, 16] {
+            assert!(
+                insert_master(&conn, &salt, &wrapped, &vec![0u8; bad_nonce]).is_err(),
+                "a {bad_nonce}-byte dek nonce must be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_a_password_row_whose_nonce_is_the_right_length() {
+        let conn = in_memory();
+        insert_password(&conn, "p1", &[0u8; 12]).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_password_row_whose_nonce_is_the_wrong_length() {
+        let conn = in_memory();
+        for bad in [0usize, 1, 11, 13, 16] {
+            assert!(
+                insert_password(&conn, &format!("p{bad}"), &vec![0u8; bad]).is_err(),
+                "a {bad}-byte password nonce must be rejected"
+            );
+        }
+    }
+
+    /// Same column, same reason, on the other table: a short nonce there is what
+    /// reaches `decrypt_note_by_id`, so it needs the same door closed.
+    #[test]
+    fn rejects_a_note_row_whose_nonce_is_the_wrong_length() {
+        let conn = in_memory();
+        for bad in [0usize, 1, 11, 13, 16] {
+            let id = format!("n{bad}");
+            assert!(
+                conn.execute(
+                    "INSERT INTO notes (id, title, encrypted_content, nonce, created_at, updated_at) \
+                     VALUES (?1, 't', ?2, ?3, '1', '1')",
+                    rusqlite::params![id, vec![0u8; 1 + TAG_LEN], vec![0u8; bad]],
+                )
+                .is_err(),
+                "a {bad}-byte note nonce must be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_a_note_row_whose_nonce_is_the_right_length() {
+        // Every other note test already goes through `insert_note`, which writes
+        // `zeroblob(12)`, so this pins that fixture to the real shape rather than
+        // to whatever the constraint happens to accept.
+        let conn = in_memory();
+        insert_note(&conn, "n1", &[0u8; 1 + TAG_LEN], None).unwrap();
+    }
 
     #[test]
     fn accepts_the_longest_body_the_constraint_allows() {
@@ -332,7 +472,7 @@ mod tests {
         insert_category(&conn, "c1", None).unwrap();
         conn.execute(
             "INSERT INTO notes (id, title, encrypted_content, nonce, category_id, created_at, updated_at) \
-             VALUES ('n2', 't', ?1, x'00', 'c1', '1', '1')",
+             VALUES ('n2', 't', ?1, zeroblob(12), 'c1', '1', '1')",
             [vec![0u8; 1 + TAG_LEN]],
         )
         .unwrap();
