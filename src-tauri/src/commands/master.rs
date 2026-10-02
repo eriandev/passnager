@@ -3,6 +3,41 @@ use crate::db::{DbConn, MasterPasswordInfo, Session};
 use tauri::State;
 use zeroize::Zeroizing;
 
+/// The shortest master password the vault will accept.
+///
+/// This lives here rather than only in the frontend because the IPC is reachable
+/// from any script that ends up in the webview, so a rule that only exists in
+/// `src/routes/setup/+page.svelte` is a suggestion: `setup_master_password` would
+/// happily wrap a vault under `""`. The setup page mirrors the number from
+/// `PASSWORD_MIN_LENGTH` in `src/lib/consts.ts` for its own message, and nothing
+/// here trusts that copy — nor does anything there trust this one, which is why the
+/// tests below pin both sides to the same number.
+///
+/// Raising it only constrains passwords being *set*. [`verify_master_password`]
+/// deliberately does not check it, so a vault created under a shorter rule keeps
+/// unlocking and can be rotated onto a longer one; without that asymmetry, every
+/// bump would brick the installs it was meant to protect.
+pub const MASTER_PASSWORD_MIN: usize = 12;
+
+/// Rejects a master password the vault must not be built on.
+///
+/// Counted in characters rather than bytes, the same way
+/// `notes::check_content` counts a body, so a passphrase of accented characters is
+/// not penalised by its encoding. The frontend's own check compares UTF-16 code
+/// units, so for an emoji-heavy passphrase this is the stricter of the two — which
+/// is the right way round, because this is the side that decides.
+fn check_master_password(password: &str) -> Result<(), String> {
+    let length = password.chars().count();
+
+    if length < MASTER_PASSWORD_MIN {
+        return Err(format!(
+            "Master password must be at least {MASTER_PASSWORD_MIN} characters"
+        ));
+    }
+
+    Ok(())
+}
+
 fn get_master_info(conn: &rusqlite::Connection) -> Result<MasterPasswordInfo, String> {
     conn.query_row(
         "SELECT salt, wrapped_dek, dek_nonce FROM master_password WHERE id = 1",
@@ -65,6 +100,11 @@ pub async fn setup_master_password(
     if count > 0 {
         return Err("Master password already configured".to_string());
     }
+
+    // Before `password.into_bytes()` and before the derivation, so a rejected
+    // passphrase costs nothing: the KDF below spends 64MB and three iterations to
+    // produce a key nobody is going to use.
+    check_master_password(&password)?;
 
     let password_bytes = password.into_bytes();
 
@@ -142,6 +182,11 @@ pub async fn change_master_password(
     old_password: String,
     new_password: String,
 ) -> Result<(), String> {
+    // The same rule `setup_master_password` enforces, checked before the database
+    // is touched: rotating onto a passphrase the vault would have refused at setup
+    // is not a weaker position than starting with it.
+    check_master_password(&new_password)?;
+
     let info = {
         let conn = db.0.lock().unwrap();
         get_master_info(&conn)?
@@ -184,4 +229,77 @@ pub async fn change_master_password(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{check_master_password, MASTER_PASSWORD_MIN};
+
+    /// Spelled out rather than built from the constant: this is the string the
+    /// setup page shows the user, so a drifting number has to be visible here
+    /// rather than reproduced faithfully by a test.
+    const REFUSED: &str = "Master password must be at least 12 characters";
+
+    fn err(password: &str) -> String {
+        check_master_password(password).unwrap_err()
+    }
+
+    /// The whole point of moving the rule into the backend: without it, this vault
+    /// would be wrapped under an empty passphrase and every row inside it would be
+    /// encrypted with a DEK that anyone can unwrap.
+    #[test]
+    fn an_empty_password_is_refused() {
+        assert_eq!(err(""), REFUSED);
+    }
+
+    #[test]
+    fn every_length_below_the_minimum_is_refused() {
+        for len in 0..MASTER_PASSWORD_MIN {
+            assert_eq!(
+                err(&"a".repeat(len)),
+                REFUSED,
+                "a {len}-character password must be refused"
+            );
+        }
+    }
+
+    /// The boundary is the part worth pinning: off-by-one here either locks out a
+    /// legitimate passphrase or lets one through that the setup page refused.
+    #[test]
+    fn the_minimum_length_is_accepted() {
+        assert!(check_master_password(&"a".repeat(MASTER_PASSWORD_MIN)).is_ok());
+    }
+
+    /// Pinning the number is the whole reason this file cannot quietly drift away
+    /// from `PASSWORD_MIN_LENGTH` in `src/lib/consts.ts`. The two sides enforce the
+    /// same rule and neither reads the other, so the tests are the only place they
+    /// meet.
+    #[test]
+    fn the_minimum_is_twelve() {
+        assert_eq!(MASTER_PASSWORD_MIN, 12);
+    }
+
+    #[test]
+    fn the_rule_is_a_floor_and_not_a_ceiling() {
+        assert!(check_master_password(&"a".repeat(200)).is_ok());
+        assert!(
+            check_master_password("correct horse battery staple").is_ok(),
+            "a passphrase is the case the rule must not get in the way of"
+        );
+    }
+
+    /// Counted in characters, not bytes, so a passphrase is not measured by its
+    /// encoding. Twelve accented characters is twelve characters even though it is
+    /// more than twelve bytes.
+    #[test]
+    fn length_is_counted_in_characters_rather_than_bytes() {
+        assert!(
+            check_master_password(&"ñ".repeat(MASTER_PASSWORD_MIN)).is_ok(),
+            "12 chars, 14 bytes"
+        );
+        assert!(
+            check_master_password(&"ñ".repeat(MASTER_PASSWORD_MIN - 1)).is_err(),
+            "11 chars, 13 bytes"
+        );
+    }
 }

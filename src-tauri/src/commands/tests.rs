@@ -11,8 +11,14 @@
 //! The list below is deliberately explicit rather than generated. It should match
 //! the `invoke_handler` in `lib.rs` one for one, and a reader has to be able to
 //! check that by eye.
+//!
+//! The last section is the one exception: it is not about the session gate but
+//! about the master password policy, which for the same reason — the IPC is
+//! reachable from any script that ends up in the webview — has to hold even when
+//! the frontend never gets to check it.
 
 use super::*;
+use crate::crypto;
 use crate::db::{DbConn, Session, SCHEMA};
 use rusqlite::Connection;
 use std::sync::Mutex;
@@ -383,4 +389,248 @@ async fn the_vault_works_again_once_unlocked() {
     )
     .await
     .expect("unlocked metadata-only update should work");
+}
+
+// --- the master password policy ----------------------------------------------
+
+/// The refusal both master commands have to give, and the one they must give for
+/// every short password rather than a per-length message.
+///
+/// Spelled out instead of formatted from the constant: this is the string the
+/// setup page puts in front of the user, so a drifting number should fail here
+/// instead of being reproduced faithfully. The constant is asserted alongside it,
+/// and `PASSWORD_MIN_LENGTH` in `src/lib/consts.ts` is the third copy of the same
+/// number, which is why all of them are pinned rather than derived.
+fn too_short() -> String {
+    assert_eq!(
+        12,
+        master::MASTER_PASSWORD_MIN,
+        "PASSWORD_MIN_LENGTH in src/lib/consts.ts mirrors this number"
+    );
+    "Master password must be at least 12 characters".to_string()
+}
+
+/// Passwords the policy has to refuse, shared by the setup and rotation tests so
+/// the two paths cannot be shown to agree by coincidence.
+const TOO_SHORT: [&str; 4] = ["", "short", "1234567", "eleven char"];
+
+/// A literal in `TOO_SHORT` that is not actually too short would silently turn its
+/// test into a positive case — the loop would find the call *succeeding* and report
+/// a confusing mismatch instead of a miscounted string. Counting characters by eye
+/// is exactly the mistake this guards, and it is worth having: it is how the entry
+/// above was wrong once already.
+#[test]
+fn every_entry_of_the_too_short_list_is_really_too_short() {
+    for password in TOO_SHORT {
+        assert!(
+            password.chars().count() < master::MASTER_PASSWORD_MIN,
+            "{password:?} has {} characters, so it is not below the minimum",
+            password.chars().count()
+        );
+    }
+
+    // And the list has to reach right up to the boundary, or it is not testing the
+    // length rule at all — just obviously-short passwords.
+    let closest = TOO_SHORT.iter().map(|p| p.chars().count()).max().unwrap();
+    assert_eq!(closest, master::MASTER_PASSWORD_MIN - 1);
+}
+
+/// The empty passphrase is the case that matters: without this check the vault is
+/// wrapped under it and every row inside is sealed with a DEK anybody can unwrap.
+/// The setup page refuses it, but the setup page is not the boundary.
+#[tokio::test]
+async fn setup_refuses_a_master_password_the_frontend_would_refuse() {
+    let app = locked();
+    let db = app.state::<DbConn>();
+    let session = app.state::<Session>();
+
+    for password in TOO_SHORT {
+        assert_eq!(
+            master::setup_master_password(db.clone(), session.clone(), password.into())
+                .await
+                .unwrap_err(),
+            too_short(),
+            "{password:?} must not be able to create a vault"
+        );
+    }
+
+    assert!(
+        session.dek().is_err(),
+        "a refused setup must not unlock the session"
+    );
+    let configured: i64 =
+        db.0.lock()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM master_password", [], |row| row.get(0))
+            .unwrap();
+    assert_eq!(configured, 0, "a refused setup must not write a master row");
+}
+
+/// Same rule on the rotation path. The vault already exists here, so this is the
+/// command that would otherwise be the way to *downgrade* an existing master
+/// password to something short.
+#[tokio::test]
+async fn change_refuses_a_new_master_password_the_frontend_would_refuse() {
+    let app = unlocked();
+    let db = app.state::<DbConn>();
+
+    for password in TOO_SHORT {
+        assert_eq!(
+            master::change_master_password(
+                db.clone(),
+                "whatever the old one was".into(),
+                password.into(),
+            )
+            .await
+            .unwrap_err(),
+            too_short(),
+            "a rotation onto {password:?} must be refused"
+        );
+    }
+}
+
+#[tokio::test]
+async fn setup_still_writes_the_row_and_unlocks_for_a_long_enough_password() {
+    let app = locked();
+    let db = app.state::<DbConn>();
+    let session = app.state::<Session>();
+
+    // The other half of the pair above: proving the check rejects only short
+    // passwords needs a positive case, and this one also covers the side effects
+    // the refusal test asserts are absent.
+    //
+    // Expensive by design, and the only test that pays for production Argon2
+    // through this path: a stubbed KDF here would not catch a policy that is
+    // enforced after the row is written.
+    assert!(master::setup_master_password(
+        db.clone(),
+        session.clone(),
+        "a".repeat(master::MASTER_PASSWORD_MIN),
+    )
+    .await
+    .is_ok());
+
+    assert!(session.dek().is_ok(), "setup leaves the vault unlocked");
+
+    let stored: i64 =
+        db.0.lock()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM master_password", [], |row| row.get(0))
+            .unwrap();
+    assert_eq!(stored, 1, "setup persists exactly one master row");
+
+    // And the second call is refused as already configured, which is the state the
+    // `/setup` dead end in the frontend turns into.
+    assert_eq!(
+        master::setup_master_password(db, session, "a".repeat(master::MASTER_PASSWORD_MIN),)
+            .await
+            .unwrap_err(),
+        "Master password already configured"
+    );
+}
+
+/// The check has to come before the work rather than after it, or the caller pays
+/// for a 64MB Argon2 derivation on a request that is going to be refused — and
+/// the error the user sees would be about the old password rather than about the
+/// one they just typed.
+#[tokio::test]
+async fn the_policy_is_checked_before_the_old_password_or_the_key_is_touched() {
+    let app = locked();
+    let db = app.state::<DbConn>();
+
+    // The vault has no master row at all, so any error here came from the policy
+    // and not from the lookup that follows it. The old password is long enough to
+    // pass on its own account, which is what makes the new one the only thing left
+    // to refuse.
+    assert_eq!(
+        master::change_master_password(db, "a long enough old one".into(), "short".into())
+            .await
+            .unwrap_err(),
+        too_short(),
+        "the length must be settled before the database is read"
+    );
+}
+
+/// The policy guards passwords being *set*, not passwords being *used*, and that
+/// asymmetry is the only thing that makes raising the minimum safe: a vault created
+/// under an older, shorter rule has to keep opening, or bumping the number bricks
+/// every install it was meant to protect.
+///
+/// The master row is written directly rather than through `setup_master_password`,
+/// which is the only way to obtain a vault the current policy would refuse. Its
+/// blob lengths are the ones the schema accepts, so this is a legitimate row and
+/// not a corrupt one.
+#[tokio::test]
+async fn a_vault_whose_password_is_now_too_short_still_unlocks() {
+    let app = locked();
+    let db = app.state::<DbConn>();
+    let session = app.state::<Session>();
+
+    let short = "eight chars";
+    assert!(
+        short.chars().count() < master::MASTER_PASSWORD_MIN,
+        "this vault has to be one the current policy would refuse"
+    );
+
+    // Exactly what a build with the old minimum would have written.
+    let salt = crypto::generate_salt();
+    let kek = Zeroizing::new(crypto::derive_kek(short.as_bytes(), &salt).unwrap());
+    let (wrapped_dek, dek_nonce) = crypto::wrap_dek(&crypto::generate_dek(), &kek).unwrap();
+    db.0.lock()
+        .unwrap()
+        .execute(
+            "INSERT INTO master_password (id, salt, wrapped_dek, dek_nonce) \
+             VALUES (1, ?1, ?2, ?3)",
+            rusqlite::params![salt, wrapped_dek, dek_nonce],
+        )
+        .unwrap();
+
+    master::verify_master_password(db, session.clone(), short.into())
+        .await
+        .expect("a vault built under an older minimum must still open");
+
+    assert!(session.dek().is_ok());
+}
+
+/// And the way out of that state is a rotation, which is why `change_master_password`
+/// validates only the new password: an owner stuck on a short passphrase has to be
+/// able to move off it without being able to create a new vault, since one already
+/// exists.
+#[tokio::test]
+async fn an_owner_of_a_short_password_can_rotate_onto_a_longer_one() {
+    let app = locked();
+    let db = app.state::<DbConn>();
+    let session = app.state::<Session>();
+
+    let short = "eight chars";
+    let longer = "a".repeat(master::MASTER_PASSWORD_MIN);
+
+    let salt = crypto::generate_salt();
+    let kek = Zeroizing::new(crypto::derive_kek(short.as_bytes(), &salt).unwrap());
+    let (wrapped_dek, dek_nonce) = crypto::wrap_dek(&crypto::generate_dek(), &kek).unwrap();
+    db.0.lock()
+        .unwrap()
+        .execute(
+            "INSERT INTO master_password (id, salt, wrapped_dek, dek_nonce) \
+             VALUES (1, ?1, ?2, ?3)",
+            rusqlite::params![salt, wrapped_dek, dek_nonce],
+        )
+        .unwrap();
+
+    master::change_master_password(db.clone(), short.into(), longer.clone())
+        .await
+        .expect("a short password is not a reason to refuse the upgrade");
+
+    // The old one no longer opens it, and the new one does.
+    assert!(
+        master::verify_master_password(db.clone(), session.clone(), short.into())
+            .await
+            .is_err()
+    );
+    assert!(
+        master::verify_master_password(db, session, longer)
+            .await
+            .is_ok(),
+        "the rotation has to actually take effect"
+    );
 }
