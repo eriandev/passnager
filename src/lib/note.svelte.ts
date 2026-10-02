@@ -4,11 +4,22 @@ import type { EntryNoteData, EntryNoteProps } from '$lib/types'
 let loading = $state(true)
 let list = $state<EntryNoteProps[]>([])
 
+// Which slice of the vault `list` currently holds. `load` replaces the list with a
+// single category's rows, so `add` and `update` have to respect that filter:
+// prepending blindly dropped a "Personal" note at the top of the "Work" filter,
+// where it stayed until the user navigated away and back.
+let loadedCategoryId: string | undefined
+
+const inList = (entry: EntryNoteProps) => loadedCategoryId === undefined || entry.categoryId === loadedCategoryId
+
 export function useNotes() {
   const load = async (categoryId?: string) => {
     loading = true
     try {
       list = await invoke<EntryNoteProps[]>('get_notes', { categoryId })
+      // Only where the list actually changed: on failure it keeps its old contents,
+      // so the filter those contents were built for has to survive as well.
+      loadedCategoryId = categoryId
       return true
     } catch {
       return false
@@ -24,7 +35,8 @@ export function useNotes() {
       color: data.color ?? null,
       categoryId: data.categoryId ?? null,
     })
-    list = [entry, ...list]
+
+    if (inList(entry)) list = [entry, ...list]
   }
 
   const update = async (id: string, data: EntryNoteData) => {
@@ -35,17 +47,21 @@ export function useNotes() {
       color: data.color ?? null,
       categoryId: data.categoryId ?? null,
     })
-    list = list.map((entry) =>
-      entry.id === id
-        ? {
-            ...entry,
-            title: data.title,
-            color: data.color ?? null,
-            categoryId: data.categoryId ?? null,
-            updatedAt: String(Math.floor(Date.now() / 1000)),
-          }
-        : entry,
-    )
+    // Relabelling in place is not enough: an edit that moves the entry out of the
+    // category being viewed has to take it off the list too.
+    list = list
+      .map((entry) =>
+        entry.id === id
+          ? {
+              ...entry,
+              title: data.title,
+              color: data.color ?? null,
+              categoryId: data.categoryId ?? null,
+              updatedAt: String(Math.floor(Date.now() / 1000)),
+            }
+          : entry,
+      )
+      .filter((entry) => entry.id !== id || inList(entry))
   }
 
   const remove = async (id: string) => {
