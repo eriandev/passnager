@@ -634,3 +634,84 @@ async fn an_owner_of_a_short_password_can_rotate_onto_a_longer_one() {
         "the rotation has to actually take effect"
     );
 }
+
+// --- telling a vault apart from an unreadable one -----------------------------
+
+/// The two answers the app routes on, so the empty case is worth pinning in both
+/// directions rather than trusting that `count > 0` was always the shape.
+#[test]
+fn an_empty_database_is_reported_as_not_configured() {
+    let app = locked();
+    assert!(
+        !master::is_master_configured(app.state::<DbConn>()).unwrap(),
+        "an empty database is a first run, not a failure"
+    );
+}
+
+#[tokio::test]
+async fn a_vault_is_reported_as_configured() {
+    let app = unlocked();
+    master::setup_master_password(
+        app.state::<DbConn>(),
+        app.state::<Session>(),
+        "a".repeat(master::MASTER_PASSWORD_MIN),
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        master::is_master_configured(app.state::<DbConn>()).unwrap(),
+        "a vault that was just created has to be visible to the check"
+    );
+}
+
+/// This is the whole commit. A database that cannot be read is not an empty one,
+/// and the old version answered `false` to both — so a vault whose file was
+/// corrupt, truncated or not yet migrated looked exactly like a first run and its
+/// owner was walked to `/setup`, a page they cannot leave.
+///
+/// Dropping the table is the honest way to produce a query that fails: a real
+/// failure here means `master_password` is missing, renamed or unreadable, and all
+/// of those have to come back as an error.
+#[test]
+fn an_unreadable_database_is_an_error_rather_than_a_missing_vault() {
+    let app = unlocked();
+    let db = app.state::<DbConn>();
+    db.0.lock()
+        .unwrap()
+        .execute("DROP TABLE master_password", [])
+        .unwrap();
+
+    let result = master::is_master_configured(db);
+    assert!(
+        result.is_err(),
+        "a database that cannot answer must not claim there is no vault"
+    );
+    assert!(
+        !result.unwrap_err().is_empty(),
+        "and it must say why, so the caller can show it"
+    );
+}
+
+/// The failure has to be distinguishable from a refusal, because the caller
+/// reports them differently: `Err` is a problem to display, `Ok(false)` is a first
+/// run. Collapsing them into one is what this commit removes, so the distinction is
+/// asserted rather than assumed.
+#[test]
+fn a_failure_and_a_missing_vault_are_not_the_same_answer() {
+    let readable = locked();
+    let missing = master::is_master_configured(readable.state::<DbConn>()).unwrap();
+
+    let unreadable = locked();
+    let db = unreadable.state::<DbConn>();
+    db.0.lock()
+        .unwrap()
+        .execute("DROP TABLE master_password", [])
+        .unwrap();
+
+    assert!(
+        master::is_master_configured(db).is_err(),
+        "the broken database must not answer the same as the empty one"
+    );
+    assert!(!missing, "and the empty one still has to answer false");
+}

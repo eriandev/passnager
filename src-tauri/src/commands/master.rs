@@ -74,15 +74,21 @@ struct RewrappedMaster {
     dek_nonce: Vec<u8>,
 }
 
+/// Whether a vault exists, as opposed to whether this app can tell.
+///
+/// A failure to read `master_password` is not the same answer as an empty table,
+/// and returning `false` for both made a damaged or unreadable database
+/// indistinguishable from a first run: the app would send the user to `/setup`,
+/// which is a dead end for someone who already has a vault. The error propagates
+/// so the caller can say "could not tell" out loud.
 #[tauri::command]
 pub fn is_master_configured(state: State<'_, DbConn>) -> Result<bool, String> {
     let conn = state.0.lock().unwrap();
-    let result: Result<i32, _> =
-        conn.query_row("SELECT COUNT(*) FROM master_password", [], |row| row.get(0));
-    match result {
-        Ok(count) => Ok(count > 0),
-        Err(_) => Ok(false),
-    }
+    let count: i32 = conn
+        .query_row("SELECT COUNT(*) FROM master_password", [], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
+
+    Ok(count > 0)
 }
 
 #[tauri::command]
