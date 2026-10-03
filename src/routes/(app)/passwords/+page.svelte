@@ -20,11 +20,11 @@
 
   let query = $state('')
   let deleting = $state(false)
-  let filterCategory = $state('')
   let deleteTargetId = $state('')
   let showAddModal = $state(false)
   let showEditModal = $state(false)
   let showDeleteAlert = $state(false)
+  let filterCategory = $state<string | null>(null)
   let editingEntry = $state<EntryPasswordProps | null>(null)
 
   const searchTerm = $derived(query.trim().toLocaleLowerCase())
@@ -42,7 +42,7 @@
     if (auth.isUnlocked) {
       Promise.allSettled([
         categories.load(),
-        passwords.load(filterCategory || undefined).then((ok) => {
+        passwords.load(filterCategory).then((ok) => {
           if (!ok) toast.error('Failed to load passwords')
         }),
       ])
@@ -108,13 +108,12 @@
     </div>
     <div class="w-52 shrink-0">
       <Select
-        bind:value={filterCategory}
         placeholder="All categories"
         items={[
           { label: 'All categories', value: '' },
           ...categories.list.map((c) => ({ label: categoryLabel(c), value: c.id })),
         ]}
-        onValueChange={(v) => (filterCategory = v ?? '')}
+        onValueChange={(v) => (filterCategory = v)}
       />
     </div>
   </section>
@@ -134,8 +133,8 @@
           <CardPassword
             {entry}
             onedit={openEdit}
-            ondelete={confirmDelete}
             oncopy={handleCopy}
+            ondelete={confirmDelete}
             categories={categories.list}
           />
         {/each}

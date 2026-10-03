@@ -9,9 +9,9 @@
   import Button from '@/components/button.svelte'
   import Select from '@/components/select.svelte'
   import CardNote from '@/components/card-note.svelte'
-  import { categoryLabel, useCategories } from '$lib/category.svelte'
   import ModalAddNote from '@/components/modal-add-note.svelte'
   import ModalEditNote from '@/components/modal-edit-note.svelte'
+  import { categoryLabel, useCategories } from '$lib/category.svelte'
   import type { EntryNoteProps } from '$lib/types'
 
   const auth = useAuth()
@@ -20,11 +20,11 @@
 
   let query = $state('')
   let deleting = $state(false)
-  let filterCategory = $state('')
   let deleteTargetId = $state('')
   let showAddModal = $state(false)
   let showEditModal = $state(false)
   let showDeleteAlert = $state(false)
+  let filterCategory = $state<string | null>(null)
   let editingEntry = $state<EntryNoteProps | null>(null)
 
   const searchTerm = $derived(query.trim().toLocaleLowerCase())
@@ -36,7 +36,7 @@
     if (auth.isUnlocked) {
       Promise.allSettled([
         categories.load(),
-        notes.load(filterCategory || undefined).then((ok) => {
+        notes.load(filterCategory).then((ok) => {
           if (!ok) toast.error('Failed to load notes')
         }),
       ])
@@ -104,13 +104,12 @@
     </div>
     <div class="w-52 shrink-0">
       <Select
-        bind:value={filterCategory}
         placeholder="All categories"
         items={[
           { label: 'All categories', value: '' },
           ...categories.list.map((c) => ({ label: categoryLabel(c), value: c.id })),
         ]}
-        onValueChange={(v) => (filterCategory = v ?? '')}
+        onValueChange={(v) => (filterCategory = v)}
       />
     </div>
   </section>

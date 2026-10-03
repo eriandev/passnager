@@ -13,7 +13,6 @@
   let formError = $state('')
   let formColor = $state('')
   let submitting = $state(false)
-  let formCategoryId = $state('')
   let formIcon = $state<string | null>(null)
 
   $effect(() => {
@@ -21,8 +20,7 @@
       formError = ''
       formName = entry.name
       formIcon = entry.icon
-      formCategoryId = entry.id
-      formColor = entry.color || CATEGORY_DEFAULT_COLOR
+      formColor = entry.color ?? CATEGORY_DEFAULT_COLOR
     }
   })
 
@@ -40,7 +38,7 @@
 
     submitting = true
     try {
-      await onupdate(formCategoryId, { name: formName.trim(), icon: formIcon, color: formColor })
+      await onupdate(entry.id, { name: formName.trim(), icon: formIcon, color: formColor })
       toast.success('Category updated')
       open = false
     } catch (err) {

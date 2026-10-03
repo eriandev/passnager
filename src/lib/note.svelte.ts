@@ -8,12 +8,12 @@ let list = $state<EntryNoteProps[]>([])
 // single category's rows, so `add` and `update` have to respect that filter:
 // prepending blindly dropped a "Personal" note at the top of the "Work" filter,
 // where it stayed until the user navigated away and back.
-let loadedCategoryId: string | undefined
+let loadedCategoryId: string | null
 
-const inList = (entry: EntryNoteProps) => loadedCategoryId === undefined || entry.categoryId === loadedCategoryId
+const inList = (entry: EntryNoteProps) => loadedCategoryId === null || entry.categoryId === loadedCategoryId
 
 export function useNotes() {
-  const load = async (categoryId?: string) => {
+  const load = async (categoryId: string | null) => {
     loading = true
     try {
       list = await invoke<EntryNoteProps[]>('get_notes', { categoryId })
@@ -30,10 +30,10 @@ export function useNotes() {
 
   const add = async (data: EntryNoteData & { content: string }) => {
     const entry = await invoke<EntryNoteProps>('add_note', {
+      color: data.color,
       title: data.title,
       content: data.content,
-      color: data.color ?? null,
-      categoryId: data.categoryId ?? null,
+      categoryId: data.categoryId,
     })
 
     if (inList(entry)) list = [entry, ...list]
@@ -42,10 +42,10 @@ export function useNotes() {
   const update = async (id: string, data: EntryNoteData) => {
     await invoke('update_note', {
       id,
+      color: data.color,
       title: data.title,
-      content: data.content ?? null,
-      color: data.color ?? null,
-      categoryId: data.categoryId ?? null,
+      content: data.content,
+      categoryId: data.categoryId,
     })
     // Relabelling in place is not enough: an edit that moves the entry out of the
     // category being viewed has to take it off the list too.
@@ -54,9 +54,9 @@ export function useNotes() {
         entry.id === id
           ? {
               ...entry,
+              color: data.color,
               title: data.title,
-              color: data.color ?? null,
-              categoryId: data.categoryId ?? null,
+              categoryId: data.categoryId,
               updatedAt: String(Math.floor(Date.now() / 1000)),
             }
           : entry,

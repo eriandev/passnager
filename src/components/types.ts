@@ -36,12 +36,12 @@ export interface CardProps<T> {
   ondelete: (id: string) => void
 }
 export interface CardPasswordProps extends CardProps<EntryPasswordProps> {
-  oncopy: (id: string) => Promise<void>
   categories: EntryCategoryProps[]
+  oncopy: (id: string) => Promise<void>
 }
 export interface CardNoteProps extends CardProps<EntryNoteProps> {
-  oncopy: (id: string) => Promise<void>
   categories: EntryCategoryProps[]
+  oncopy: (id: string) => Promise<void>
 }
 export interface ColorPickerProps {
   id?: string
@@ -57,13 +57,13 @@ export interface ModalAddCategoryProps {
 }
 export interface ModalAddNoteProps {
   open: boolean
-  onadd: (data: EntryNoteData & { content: string }) => Promise<void>
   categories: EntryCategoryProps[]
+  onadd: (data: EntryNoteData & { content: string }) => Promise<void>
 }
 export interface ModalAddPasswordProps {
   open: boolean
-  onadd: (data: EntryPasswordData & { password: string }) => Promise<void>
   categories: EntryCategoryProps[]
+  onadd: (data: EntryPasswordData & { password: string }) => Promise<void>
 }
 export interface ModalEditCategoryProps {
   open: boolean
@@ -73,14 +73,14 @@ export interface ModalEditCategoryProps {
 export interface ModalEditNoteProps {
   open: boolean
   entry: EntryNoteProps | null
-  onupdate: (id: string, data: EntryNoteData) => Promise<void>
   categories: EntryCategoryProps[]
+  onupdate: (id: string, data: EntryNoteData) => Promise<void>
 }
 export interface ModalEditPasswordProps {
   open: boolean
   entry: EntryPasswordProps | null
-  onupdate: (id: string, data: EntryPasswordData) => Promise<void>
   categories: EntryCategoryProps[]
+  onupdate: (id: string, data: EntryPasswordData) => Promise<void>
 }
 export interface ModalProps {
   open: boolean
@@ -92,15 +92,26 @@ export interface ModalProps {
 export type PasswordInputProps = Exclude<InputProps, 'rightIcon'>
 export interface SelectProps {
   id?: string
-  value?: string
+  /**
+   * `null` means "nothing selected". Not bindable on purpose: bits-ui speaks `''`
+   * for the same thing, so a write-back from it would put a second empty value
+   * straight back into the parent's state. The parent owns the value and this
+   * component only reports changes through `onValueChange`.
+   */
+  value?: string | null
   items?: {
+    /**
+     * `''` is the one item that means "nothing selected". bits-ui needs a real
+     * item to render a label for, so the option exists as a sentinel rather than
+     * as something the rest of the app has to keep out of its way.
+     */
     value: string
     label: string
     disabled?: boolean
   }[]
   icon?: Snippet
   placeholder?: string
-  onValueChange: (v?: string) => void
+  onValueChange: (v: string | null) => void
 }
 export interface SidebarProps {
   currentPath?: string

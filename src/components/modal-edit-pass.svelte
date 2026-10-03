@@ -14,7 +14,7 @@
   let formUsername = $state('')
   let formPassword = $state('')
   let submitting = $state(false)
-  let formCategoryId = $state('')
+  let formCategoryId = $state<string | null>(null)
 
   const categoryItems = $derived([
     { label: 'No category', value: '' },
@@ -27,7 +27,7 @@
       formPassword = ''
       formUrl = entry.url
       formUsername = entry.username
-      formCategoryId = entry.categoryId || ''
+      formCategoryId = entry.categoryId
     }
   })
 
@@ -51,9 +51,9 @@
     try {
       await onupdate(entry.id, {
         url: formUrl.trim(),
+        categoryId: formCategoryId,
         username: formUsername.trim(),
         password: formPassword || null,
-        categoryId: formCategoryId || null,
       })
       toast.success('Password updated')
       open = false
@@ -94,8 +94,7 @@
           items={categoryItems}
           id="edit-pass-category"
           placeholder="No category"
-          bind:value={formCategoryId}
-          onValueChange={(v) => (formCategoryId = v ?? '')}
+          onValueChange={(v) => (formCategoryId = v)}
         />
       </div>
     </section>

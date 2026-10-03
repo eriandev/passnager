@@ -27,7 +27,7 @@ export function useCategories() {
     const entry = await invoke<EntryCategoryProps>('add_category', {
       name: data.name,
       icon: data.icon,
-      color: data.color ?? null,
+      color: data.color,
     })
     list = [...list, entry].sort(byName)
   }
@@ -37,12 +37,10 @@ export function useCategories() {
       id,
       name: data.name,
       icon: data.icon,
-      color: data.color ?? null,
+      color: data.color,
     })
     list = list
-      .map((entry) =>
-        entry.id === id ? { ...entry, name: data.name, icon: data.icon, color: data.color ?? null } : entry,
-      )
+      .map((entry) => (entry.id === id ? { ...entry, name: data.name, icon: data.icon, color: data.color } : entry))
       .sort(byName)
   }
 

@@ -16,8 +16,8 @@
   let formError = $state('')
   let formContent = $state('')
   let submitting = $state(false)
-  let formCategoryId = $state('')
   let formColor = $state(NOTE_DEFAULT_COLOR)
+  let formCategoryId = $state<string | null>(null)
 
   const contentLength = $derived([...formContent].length)
   const contentTooLong = $derived(contentLength > NOTE_CONTENT_MAX)
@@ -32,7 +32,7 @@
       formTitle = ''
       formError = ''
       formContent = ''
-      formCategoryId = ''
+      formCategoryId = null
       formColor = NOTE_DEFAULT_COLOR
     }
   })
@@ -62,7 +62,7 @@
         color: formColor,
         content: formContent,
         title: formTitle.trim(),
-        categoryId: formCategoryId || null,
+        categoryId: formCategoryId,
       })
       toast.success('Note saved')
       open = false
@@ -109,8 +109,7 @@
           id="add-note-category"
           items={categoryItems}
           placeholder="No category"
-          bind:value={formCategoryId}
-          onValueChange={(v) => (formCategoryId = v ?? '')}
+          onValueChange={(v) => (formCategoryId = v)}
         />
       </div>
     </section>

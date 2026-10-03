@@ -6,12 +6,21 @@
   import CaretDoubleDown from 'phosphor-svelte/lib/CaretDoubleDownIcon'
   import type { SelectProps } from '@/components/types'
 
-  let { id, placeholder, items = [], icon, value = $bindable(), onValueChange }: SelectProps = $props()
+  let { id, placeholder, items = [], icon, value = null, onValueChange }: SelectProps = $props()
 
   const selectedLabel = $derived(value ? items.find((option) => option.value === value)?.label : placeholder)
+
+  // bits-ui's single select has exactly two states: a string, or nothing, and it
+  // spells "nothing" differently depending on where you look — `''` in the value
+  // it is given, `undefined` in the change it reports. Both mean the same thing to
+  // the app, so the falsy check is on the value rather than an equality against
+  // one spelling of it.
+  function handleChange(v: string) {
+    onValueChange(v ? v : null)
+  }
 </script>
 
-<Select.Root bind:value {items} type="single" {onValueChange}>
+<Select.Root value={value ?? ''} {items} type="single" onValueChange={handleChange}>
   <Select.Trigger
     aria-label={placeholder}
     class="inline-flex h-input w-full items-center rounded-9px border border-border-input bg-background px-2.75 text-sm transition-colors placeholder:text-foreground-alt/50 focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:ring-offset-background focus:outline-none"

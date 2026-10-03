@@ -8,12 +8,12 @@ let list = $state<EntryPasswordProps[]>([])
 // single category's rows, so `add` and `update` have to respect that filter:
 // prepending blindly dropped a "Personal" password at the top of the "Work" filter,
 // where it stayed until the user navigated away and back.
-let loadedCategoryId: string | undefined
+let loadedCategoryId: string | null
 
-const inList = (entry: EntryPasswordProps) => loadedCategoryId === undefined || entry.categoryId === loadedCategoryId
+const inList = (entry: EntryPasswordProps) => loadedCategoryId === null || entry.categoryId === loadedCategoryId
 
 export function usePasswords() {
-  const load = async (categoryId?: string) => {
+  const load = async (categoryId: string | null) => {
     loading = true
     try {
       list = await invoke<EntryPasswordProps[]>('get_passwords', { categoryId })
@@ -33,7 +33,7 @@ export function usePasswords() {
       url: data.url,
       username: data.username,
       password: data.password,
-      categoryId: data.categoryId ?? null,
+      categoryId: data.categoryId,
     })
 
     if (inList(entry)) list = [entry, ...list]
@@ -44,8 +44,8 @@ export function usePasswords() {
       id,
       url: data.url,
       username: data.username,
+      categoryId: data.categoryId,
       password: data.password || null,
-      categoryId: data.categoryId ?? null,
     })
     // Relabelling in place is not enough: an edit that moves the entry out of the
     // category being viewed has to take it off the list too.
@@ -56,7 +56,7 @@ export function usePasswords() {
               ...entry,
               url: data.url,
               username: data.username,
-              categoryId: data.categoryId ?? null,
+              categoryId: data.categoryId,
               updatedAt: String(Math.floor(Date.now() / 1000)),
             }
           : entry,
