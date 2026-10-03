@@ -2,10 +2,10 @@
   import { page } from '$app/state'
   import type { RouteId } from '$app/types'
   import { useAuth } from '$lib/auth.svelte'
-  import CheckError from '@/components/check-error.svelte'
   import Sidebar from '@/components/sidebar.svelte'
   import { useNavigation } from '$lib/navigation.svelte'
-  import '@/app.css'
+  import CheckError from '@/components/check-error.svelte'
+
 
   const auth = useAuth()
   const navigate = useNavigation()
