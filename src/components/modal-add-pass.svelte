@@ -52,9 +52,9 @@
     submitting = true
     try {
       await onadd({
-        url: formUrl,
-        username: formUsername,
+        url: formUrl.trim(),
         password: formPassword,
+        username: formUsername.trim(),
         categoryId: formCategoryId || null,
       })
       toast.success('Password saved')

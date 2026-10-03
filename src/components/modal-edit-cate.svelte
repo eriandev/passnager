@@ -40,7 +40,7 @@
 
     submitting = true
     try {
-      await onupdate(formCategoryId, { name: formName, icon: formIcon || null, color: formColor })
+      await onupdate(formCategoryId, { name: formName.trim(), icon: formIcon, color: formColor })
       toast.success('Category updated')
       open = false
     } catch (err) {

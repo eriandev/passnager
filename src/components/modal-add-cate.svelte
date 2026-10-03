@@ -37,7 +37,7 @@
 
     submitting = true
     try {
-      await onadd({ name: formName, icon: formIcon || null, color: formColor })
+      await onadd({ name: formName.trim(), icon: formIcon, color: formColor })
       toast.success('Category created')
       open = false
     } catch (err) {

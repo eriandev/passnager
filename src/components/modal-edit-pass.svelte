@@ -50,8 +50,8 @@
     submitting = true
     try {
       await onupdate(entry.id, {
-        url: formUrl,
-        username: formUsername,
+        url: formUrl.trim(),
+        username: formUsername.trim(),
         password: formPassword || null,
         categoryId: formCategoryId || null,
       })
