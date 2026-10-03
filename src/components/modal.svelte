@@ -30,6 +30,7 @@
 
       {#if closeable}
         <AlertDialog.Cancel
+          type="button"
           class="absolute top-5 right-5 rounded-md focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden active:scale-[0.98]"
         >
           <X class="size-5 text-foreground" />
