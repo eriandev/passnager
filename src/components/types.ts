@@ -89,7 +89,7 @@ export interface ModalProps {
   description?: string
   children: Snippet
 }
-export type PasswordInputProps = Exclude<InputProps, 'rightIcon'>
+export type PasswordInputProps = Omit<InputProps, 'rightIcon'>
 export interface SelectProps {
   id?: string
   /**
