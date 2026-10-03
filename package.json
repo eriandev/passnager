@@ -14,7 +14,7 @@
     "prepare": "svelte-kit sync || echo ''",
     "check": "pnpm check:svelte && pnpm lint",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "lint": "prettier --check . && eslint 'src/**/*.{svelte,ts,js}'",
+    "lint": "prettier --check . && eslint \"src/**/*.{svelte,ts,js}\"",
     "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu",
     "check:svelte": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "tauri:build:windows": "tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc"

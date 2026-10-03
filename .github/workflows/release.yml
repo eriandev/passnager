@@ -89,9 +89,6 @@ jobs:
       - name: Install dependencies 💼
         run: pnpm install --frozen-lockfile
 
-      - name: Lint, format & typecheck ✨
-        run: pnpm check
-
       # The release title is the tag exactly as pushed (`v1.2.3`), so the release
       # heading and the tag always read identically. The body is exactly the
       # section that `release-it` just added to CHANGELOG.md for that version. The

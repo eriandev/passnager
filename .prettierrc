@@ -1,6 +1,7 @@
 {
   "semi": false,
   "printWidth": 120,
+  "endOfLine": "lf",
   "singleQuote": true,
   "trailingComma": "all",
   "plugins": ["prettier-plugin-tailwindcss", "prettier-plugin-svelte"],
