@@ -85,7 +85,6 @@ export interface ModalEditPasswordProps {
 export interface ModalProps {
   open: boolean
   title?: string
-  closeable?: boolean
   description?: string
   children: Snippet
 }

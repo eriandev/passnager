@@ -13,11 +13,8 @@ let isConfigured: boolean | null = $state(null)
 // to `/setup`. Leaving the state unknown is what makes that visible.
 let configuredError: string | null = $state(null)
 
-// `initialized` used to be latched *before* the await, so a check that failed — or
-// was still running when a redirect read it — never ran again and the app stayed
-// wrong until it was restarted. It now latches on success only, and a failure backs
-// off and tries again: a transient SQLite lock clears on its own, so retrying is
-// what turns "restart the app" into "wait a moment".
+// A failure backs off and retries: a transient SQLite lock clears on its own, so
+// retrying is what turns "restart the app" into "wait a moment".
 const RETRY_BASE_MS = 500
 const RETRY_MAX_MS = 10_000
 let retryMs = RETRY_BASE_MS
@@ -30,8 +27,6 @@ function scheduleRetry() {
 }
 
 async function doCheckConfigured() {
-  if (initialized) return
-
   try {
     const configured: boolean = await invoke('is_master_configured')
     isConfigured = configured
@@ -95,7 +90,7 @@ export function useAuth() {
   }
 
   // Asks for the check again right away, for someone who would rather not wait
-  // out the backoff. A no-op once a check has succeeded.
+  // out the backoff.
   const retryCheck = async () => {
     clearTimeout(retryTimer)
     retryMs = RETRY_BASE_MS

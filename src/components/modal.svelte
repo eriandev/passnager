@@ -1,9 +1,8 @@
 <script lang="ts">
-  import X from 'phosphor-svelte/lib/XIcon'
   import { AlertDialog, Separator } from 'bits-ui'
   import type { ModalProps } from '@/components/types'
 
-  let { open = $bindable(false), closeable = false, title = '', description, children }: ModalProps = $props()
+  let { open = $bindable(false), title = '', description, children }: ModalProps = $props()
 </script>
 
 <AlertDialog.Root bind:open>
@@ -27,16 +26,6 @@
       {/if}
 
       {@render children?.()}
-
-      {#if closeable}
-        <AlertDialog.Cancel
-          type="button"
-          class="absolute top-5 right-5 rounded-md focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden active:scale-[0.98]"
-        >
-          <X class="size-5 text-foreground" />
-          <span class="sr-only">Close</span>
-        </AlertDialog.Cancel>
-      {/if}
     </AlertDialog.Content>
   </AlertDialog.Portal>
 </AlertDialog.Root>

@@ -6,7 +6,6 @@
   import { useNavigation } from '$lib/navigation.svelte'
   import CheckError from '@/components/check-error.svelte'
 
-
   const auth = useAuth()
   const navigate = useNavigation()
 
