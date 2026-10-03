@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.3.3](https://github.com/eriandev/passnager/compare/v0.3.2...v0.3.3) (2026-10-03)
+
+### 🐛 Bug Fixes
+
+- **build:** correct clippy warning ([563d3eb](https://github.com/eriandev/passnager/commit/563d3eb76b107e8a686a346c77e704ecb522c8cc))
+- **ci:** lint and typecheck in the release build job ([4abbc19](https://github.com/eriandev/passnager/commit/4abbc1953c295efaffae010ce5e90ca07db64a20))
+- **ci:** stop the Windows release job from failing lint ([ef299eb](https://github.com/eriandev/passnager/commit/ef299ebfc5049ca8cda4002fcd244092f8eb2a13))
+- **crypto:** reject a malformed nonce instead of panicking ([f40c484](https://github.com/eriandev/passnager/commit/f40c484f058c87c26b702bd7732234a291aef922))
+- **db:** constrain the salt, nonce and wrapped-dek blobs in the schema ([22d5723](https://github.com/eriandev/passnager/commit/22d5723758579f5df3bd52ac6a065bf3db55a3c6))
+- **db:** keep the category row shape camelCase like the other rows ([068c84a](https://github.com/eriandev/passnager/commit/068c84ac1e373f9b9dc5d95d9a1a56a5392a686d))
+- **frontend:** do not inject a new entry into a filtered list ([bfa90bc](https://github.com/eriandev/passnager/commit/bfa90bc69f70593db28539bae3fda2b72a979bd0))
+- **frontend:** enforce the same metadata length limits as the backend ([306dab2](https://github.com/eriandev/passnager/commit/306dab2eabede22a259ad3d8675a88dac5b9e683))
+- **frontend:** give every button an explicit type ([ec323ac](https://github.com/eriandev/passnager/commit/ec323ac7c87472779f0632940d424d617df7adf9))
+- **frontend:** label the controls the modals and lists leave unnamed ([6744bf8](https://github.com/eriandev/passnager/commit/6744bf80aef281e0ed7ff709a609c5a37f2938c6))
+- **frontend:** omit rightIcon from the password input props ([f4873b0](https://github.com/eriandev/passnager/commit/f4873b00bc2b4c1cbb658716c2be47bb133f9cad))
+- **frontend:** render a category that has no icon cleanly ([353d86f](https://github.com/eriandev/passnager/commit/353d86f9b0e6ab698d438fc656dd5d3b9ec39e91))
+- **frontend:** stop reporting a delete that deleted nothing ([96fd382](https://github.com/eriandev/passnager/commit/96fd3821832ad7a22a434c02291d9e7f3567e2aa))
+- **frontend:** submit the trimmed values the forms validate ([5480f5e](https://github.com/eriandev/passnager/commit/5480f5e74a64f12732771f33608f6e9dd7a0d47c))
+- **frontend:** wait for the configuration check before redirecting ([1a5eaf0](https://github.com/eriandev/passnager/commit/1a5eaf09782964a2aac321e1ad5e3783dd736056))
+- **master:** report a failed config check instead of claiming no master password ([0eae26d](https://github.com/eriandev/passnager/commit/0eae26d4ef867249dd32644ff102c754f52053d3))
+- **security:** drop the opener plugin the app never calls ([336b333](https://github.com/eriandev/passnager/commit/336b33306c1d5a8f675fe4e65003eba6abc2d7ee))
+- **security:** enforce the master password policy ([720a315](https://github.com/eriandev/passnager/commit/720a315be6b4a63f961493e3cba9964f94042a30))
+- **security:** validate the vault metadata the schema leaves unbounded ([f77ecd5](https://github.com/eriandev/passnager/commit/f77ecd5ac3b7a6bb8840539b38d50dc27cc0f011))
+- **style:** change selection color ([a7c59fa](https://github.com/eriandev/passnager/commit/a7c59fa09e0cf42515dfefdbfd135fcab5a9f6d0))
+
+### 🚜 Code Refactoring
+
+- **frontend:** hoist the category filter items into a derived ([86f9f77](https://github.com/eriandev/passnager/commit/86f9f7742dd7934374dd80074e86ae0b9a77aa47))
+- **frontend:** use `null` as the single empty value for entry data ([93dcca1](https://github.com/eriandev/passnager/commit/93dcca1770d9a44855166e3be85f7f61062c9f54))
+
+### 🎨 Styles
+
+- **backend:** format code ([76ff53d](https://github.com/eriandev/passnager/commit/76ff53dcbdbd41da180953ccc581bd56406f4aad))
+
+### Miscellaneous Tasks
+
+- **build:** drop the unused scaffold assets and the duplicate stylesheet import ([5a1bd28](https://github.com/eriandev/passnager/commit/5a1bd28e81fab81e01903278f7e37e0a90360308))
+- drop the unreachable and unreferenced code ([2834f84](https://github.com/eriandev/passnager/commit/2834f8463eaead313e1544d9483c48817c42ac1b))
+
 ## [0.3.2](https://github.com/eriandev/passnager/compare/v0.3.1...v0.3.2) (2026-09-30)
 
 ### 🐛 Bug Fixes
