@@ -1,7 +1,19 @@
 use crate::crypto;
-use crate::db::{unix_timestamp, DbConn, PasswordEntry, Session};
+use crate::db::{
+    check_max_chars, unix_timestamp, DbConn, PasswordEntry, Session, URL_MAX_CHARS,
+    USERNAME_MAX_CHARS,
+};
 use tauri::State;
 use uuid::Uuid;
+
+/// Checks the two plaintext columns `add_password` and `update_password` write.
+///
+/// The password itself is not checked and cannot be: there is no documented
+/// maximum length, so any bound here would be invented.
+fn check_metadata(username: &str, url: &str) -> Result<(), String> {
+    check_max_chars("Username", username, USERNAME_MAX_CHARS)?;
+    check_max_chars("URL", url, URL_MAX_CHARS)
+}
 
 #[tauri::command]
 pub async fn add_password(
@@ -14,6 +26,7 @@ pub async fn add_password(
 ) -> Result<PasswordEntry, String> {
     let conn = db.0.lock().unwrap();
     let dek = session.dek()?;
+    check_metadata(&username, &url)?;
 
     let (encrypted, nonce) = crypto::encrypt_password(password.as_bytes(), &dek)?;
 
@@ -85,6 +98,8 @@ pub async fn update_password(
     category_id: Option<String>,
 ) -> Result<(), String> {
     session.require_unlocked()?;
+    check_metadata(&username, &url)?;
+
     let conn = db.0.lock().unwrap();
     let now = unix_timestamp();
 

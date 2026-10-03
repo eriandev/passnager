@@ -1,24 +1,27 @@
 use crate::color;
 use crate::crypto;
-use crate::db::{unix_timestamp, DbConn, NoteEntry, Session};
+use crate::db::{
+    check_max_chars, unix_timestamp, DbConn, NoteEntry, Session, NOTE_CONTENT_MAX_CHARS,
+    NOTE_TITLE_MAX_CHARS,
+};
 use tauri::State;
 use uuid::Uuid;
 
-pub const CONTENT_MAX_CHARS: usize = 256;
-
 fn check_content(content: &str) -> Result<(), String> {
-    let length = content.chars().count();
-
-    if length == 0 {
+    // `notes.content` is the one column here with a lower bound as well, and it
+    // keeps it: unlike the metadata columns, an empty body has never been a valid
+    // row and there is no legacy value to protect.
+    if content.is_empty() {
         return Err("Content is required".to_string());
     }
-    if length > CONTENT_MAX_CHARS {
-        return Err(format!(
-            "Content must be {CONTENT_MAX_CHARS} characters or fewer"
-        ));
-    }
 
-    Ok(())
+    check_max_chars("Content", content, NOTE_CONTENT_MAX_CHARS)
+}
+
+/// The one plaintext column `add_note` and `update_note` write that `check_content`
+/// does not already cover.
+fn check_title(title: &str) -> Result<(), String> {
+    check_max_chars("Title", title, NOTE_TITLE_MAX_CHARS)
 }
 
 #[tauri::command]
@@ -33,6 +36,7 @@ pub async fn add_note(
     let conn = db.0.lock().unwrap();
     let dek = session.dek()?;
     check_content(&content)?;
+    check_title(&title)?;
     let color = color::normalize(color)?;
 
     let (encrypted, nonce) = crypto::encrypt_password(content.as_bytes(), &dek)?;
@@ -106,6 +110,8 @@ pub async fn update_note(
     category_id: Option<String>,
 ) -> Result<(), String> {
     session.require_unlocked()?;
+    check_title(&title)?;
+
     let conn = db.0.lock().unwrap();
     let color = color::normalize(color)?;
     let now = unix_timestamp();

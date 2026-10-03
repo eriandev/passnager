@@ -1,7 +1,19 @@
 use crate::color;
-use crate::db::{Category, DbConn, Session};
+use crate::db::{
+    check_max_chars, Category, DbConn, Session, CATEGORY_ICON_MAX_CHARS, CATEGORY_NAME_MAX_CHARS,
+};
 use tauri::State;
 use uuid::Uuid;
+
+/// Checks the two free-text columns `add_category` and `update_category` write.
+fn check_metadata(name: &str, icon: Option<&str>) -> Result<(), String> {
+    check_max_chars("Name", name, CATEGORY_NAME_MAX_CHARS)?;
+    if let Some(icon) = icon {
+        check_max_chars("Icon", icon, CATEGORY_ICON_MAX_CHARS)?;
+    }
+
+    Ok(())
+}
 
 #[tauri::command]
 pub fn add_category(
@@ -12,6 +24,8 @@ pub fn add_category(
     color: Option<String>,
 ) -> Result<Category, String> {
     session.require_unlocked()?;
+    check_metadata(&name, icon.as_deref())?;
+
     let conn = state.0.lock().unwrap();
     let id = Uuid::new_v4().to_string();
     let color = color::normalize(color)?;
@@ -65,6 +79,8 @@ pub fn update_category(
     color: Option<String>,
 ) -> Result<(), String> {
     session.require_unlocked()?;
+    check_metadata(&name, icon.as_deref())?;
+
     let conn = state.0.lock().unwrap();
     let color = color::normalize(color)?;
     conn.execute(

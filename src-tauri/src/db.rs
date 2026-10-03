@@ -123,6 +123,50 @@ pub fn db_path(app: &AppHandle) -> std::path::PathBuf {
     config_dir(app).join("passnager.db")
 }
 
+/// Upper bounds on the vault's plaintext columns, in characters.
+///
+/// SQLite's `length()` on TEXT counts code points, so these are directly
+/// comparable with the `chars().count()` the commands check with — one number,
+/// enforced on both sides, and `db::tests` ties them together from the schema's
+/// side.
+///
+/// The values are ordinary UI ceilings rather than a security requirement: none of
+/// this data is secret and the frontend already caps what it will type. What the
+/// bounds stop is a row growing without limit, which for `url` in particular means
+/// a caller deciding how much memory one field costs.
+pub const CATEGORY_NAME_MAX_CHARS: usize = 64;
+/// Generous for "one emoji": a single grapheme can be several code points, and a
+/// ZWJ sequence is several graphemes.
+pub const CATEGORY_ICON_MAX_CHARS: usize = 16;
+pub const USERNAME_MAX_CHARS: usize = 128;
+/// The longest URL anything in the wild accepts in practice.
+pub const URL_MAX_CHARS: usize = 2048;
+/// A title is a label, not a paragraph: the body is where the note lives, and this
+/// is the same ceiling a category name gets.
+pub const NOTE_TITLE_MAX_CHARS: usize = 64;
+/// The 256 that `notes.content` has always allowed, kept as-is: this one is a
+/// product rule the frontend also enforces, not a bound being introduced here.
+pub const NOTE_CONTENT_MAX_CHARS: usize = 256;
+
+/// Rejects a metadata value longer than its column allows.
+///
+/// Upper bound only, and deliberately no lower one: these columns were written
+/// without validation for as long as the app existed, so a vault may already hold
+/// an empty name or title. Refusing those on update would leave the row
+/// un-editable rather than repair it, which is worse than leaving it be. The
+/// frontend is where "is this field filled in" belongs.
+pub fn check_max_chars(field: &str, value: &str, max: usize) -> Result<(), String> {
+    if value.chars().count() > max {
+        return Err(format!("{field} must be {max} characters or fewer"));
+    }
+
+    Ok(())
+}
+
+/// `CREATE TABLE IF NOT EXISTS` leaves an already-created table untouched, so a
+/// vault written by an earlier build keeps the schema it has. The Rust-side check
+/// is what protects those; these only apply to tables created from here on.
+///
 /// The whole schema, kept out of `init_db` so the constraints can be tested
 /// against an in-memory database instead of only against a real vault on disk.
 ///
@@ -134,9 +178,6 @@ pub fn db_path(app: &AppHandle) -> std::path::PathBuf {
 /// this matters — these constraints exist so a malformed row cannot be written at
 /// all, and so the shape is documented next to the data.
 ///
-/// `CREATE TABLE IF NOT EXISTS` leaves an already-created table untouched, so a
-/// vault written by an earlier build keeps the schema it has. The Rust-side check
-/// is what protects those; these only apply to tables created from here on.
 pub(crate) const SCHEMA: &str = "
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
@@ -153,8 +194,11 @@ pub(crate) const SCHEMA: &str = "
 
         CREATE TABLE IF NOT EXISTS categories (
             id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            icon TEXT,
+            -- Metadata is capped in characters, matching the `chars()` counts in
+            -- `check_max_chars`. Upper bound only: a vault from an earlier build may
+            -- hold an empty name, and a lower bound would make that row un-editable.
+            name TEXT NOT NULL CHECK (length(name) <= 64),
+            icon TEXT CHECK (icon IS NULL OR length(icon) <= 16),
             color TEXT,
             -- The colour is interpolated into a CSS property, so only a hex triple.
             CHECK (color IS NULL OR color GLOB '#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]')
@@ -162,10 +206,13 @@ pub(crate) const SCHEMA: &str = "
 
         CREATE TABLE IF NOT EXISTS passwords (
             id TEXT PRIMARY KEY,
-            username TEXT NOT NULL,
+            username TEXT NOT NULL CHECK (length(username) <= 128),
+            -- Deliberately uncapped: there is no documented maximum password length,
+            -- so picking one would be a product decision rather than a fix. See the
+            -- `notes.encrypted_content` constraint for how the bounded half works.
             encrypted_password BLOB NOT NULL,
             nonce BLOB NOT NULL CHECK (length(nonce) = 12),
-            url TEXT NOT NULL,
+            url TEXT NOT NULL CHECK (length(url) <= 2048),
             category_id TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
@@ -174,7 +221,7 @@ pub(crate) const SCHEMA: &str = "
 
         CREATE TABLE IF NOT EXISTS notes (
             id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
+            title TEXT NOT NULL CHECK (length(title) <= 64),
             encrypted_content BLOB NOT NULL,
             nonce BLOB NOT NULL CHECK (length(nonce) = 12),
             color TEXT,
@@ -295,6 +342,112 @@ mod tests {
         let wrapped = vec![0u8; 32 + TAG_LEN];
         let nonce = vec![0u8; 12];
         insert_master(&conn, &salt, &wrapped, &nonce).expect("the shapes setup writes must fit");
+    }
+
+    /// The metadata bounds exist twice: as the `CHECK` clauses in `SCHEMA` and as
+    /// the constants `check_max_chars` is called with. SQLite's `length()` on TEXT
+    /// counts code points and the Rust side counts `chars()`, so the two agree —
+    /// but only for as long as the numbers are the same, and nothing at compile
+    /// time holds them together. This is where they are held together.
+    #[test]
+    fn the_metadata_bounds_are_the_ones_the_commands_check_with() {
+        // (column, constant, an INSERT that puts the value under test in ?2)
+        let cases: [(&str, usize, &str); 5] = [
+            (
+                "categories.name",
+                CATEGORY_NAME_MAX_CHARS,
+                "INSERT INTO categories (id, name) VALUES (?1, ?2)",
+            ),
+            (
+                "categories.icon",
+                CATEGORY_ICON_MAX_CHARS,
+                "INSERT INTO categories (id, name, icon) VALUES (?1, 'n', ?2)",
+            ),
+            (
+                "passwords.username",
+                USERNAME_MAX_CHARS,
+                "INSERT INTO passwords (id, username, encrypted_password, nonce, url, created_at, updated_at) \
+                 VALUES (?1, ?2, zeroblob(17), zeroblob(12), 'u', '1', '1')",
+            ),
+            (
+                "passwords.url",
+                URL_MAX_CHARS,
+                "INSERT INTO passwords (id, username, encrypted_password, nonce, url, created_at, updated_at) \
+                 VALUES (?1, 'u', zeroblob(17), zeroblob(12), ?2, '1', '1')",
+            ),
+            (
+                "notes.title",
+                NOTE_TITLE_MAX_CHARS,
+                "INSERT INTO notes (id, title, encrypted_content, nonce, created_at, updated_at) \
+                 VALUES (?1, ?2, zeroblob(17), zeroblob(12), '1', '1')",
+            ),
+        ];
+
+        let conn = in_memory();
+
+        for (index, (column, max, sql)) in cases.iter().enumerate() {
+            let at_limit = "a".repeat(*max);
+            let over_limit = "a".repeat(max + 1);
+
+            assert!(
+                insert_bound(&conn, sql, index, &at_limit).is_ok(),
+                "{column} must accept exactly {max} characters"
+            );
+            assert!(
+                insert_bound(&conn, sql, 100 + index, &over_limit).is_err(),
+                "{column} must refuse {max} plus one"
+            );
+        }
+    }
+
+    /// No lower bound, on purpose: these columns were written without validation for
+    /// as long as the app existed, so a vault may hold an empty name already. A
+    /// minimum would turn that row into one the owner can no longer edit.
+    #[test]
+    fn the_metadata_bounds_do_not_refuse_an_empty_value() {
+        let conn = in_memory();
+        assert!(
+            insert_bound(
+                &conn,
+                "INSERT INTO categories (id, name) VALUES (?1, ?2)",
+                0,
+                "",
+            )
+            .is_ok(),
+            "an empty name must survive: that row already exists in some vault"
+        );
+    }
+
+    /// The one blob left uncapped, and the reason is recorded next to the column
+    /// rather than here: there is no documented maximum password length, so any bound
+    /// would be a product decision. This test is here so that taking one has to be
+    /// a deliberate act rather than a leftover.
+    #[test]
+    fn the_encrypted_password_is_still_uncapped() {
+        let conn = in_memory();
+        conn.execute(
+            "INSERT INTO passwords (id, username, encrypted_password, nonce, url, created_at, updated_at) \
+             VALUES ('p', 'u', ?1, zeroblob(12), 'u', '1', '1')",
+            rusqlite::params![vec![0u8; 1 << 20]],
+        )
+        .expect("nothing caps this column yet");
+    }
+
+    fn insert_bound(conn: &Connection, sql: &str, index: usize, value: &str) -> SqlResult<()> {
+        conn.execute(sql, rusqlite::params![format!("row{index}"), value])
+            .map(|_| ())
+    }
+
+    #[test]
+    fn dbg_empty_name() {
+        let conn = in_memory();
+        let r = conn.execute(
+            "INSERT INTO categories (id, name) VALUES ('c', ?1)",
+            rusqlite::params![""],
+        );
+        eprintln!("empty -> {r:?}");
+        let r2 = conn.execute("INSERT INTO categories (id, name) VALUES ('d', 'n')", []);
+        eprintln!("normal -> {r2:?}");
     }
 
     /// These three columns are handed to the crypto module untouched, and

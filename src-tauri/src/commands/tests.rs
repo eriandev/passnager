@@ -19,7 +19,10 @@
 
 use super::*;
 use crate::crypto;
-use crate::db::{DbConn, Session, SCHEMA};
+use crate::db::{
+    DbConn, Session, CATEGORY_ICON_MAX_CHARS, CATEGORY_NAME_MAX_CHARS, NOTE_CONTENT_MAX_CHARS,
+    NOTE_TITLE_MAX_CHARS, SCHEMA, URL_MAX_CHARS, USERNAME_MAX_CHARS,
+};
 use rusqlite::Connection;
 use std::sync::Mutex;
 use tauri::test::{mock_builder, mock_context, noop_assets, MockRuntime};
@@ -635,7 +638,241 @@ async fn an_owner_of_a_short_password_can_rotate_onto_a_longer_one() {
     );
 }
 
-// --- telling a vault apart from an unreadable one -----------------------------
+// --- the metadata bounds ------------------------------------------------------
+
+/// The `CHECK` clauses in the schema only apply to tables created from here on:
+/// `CREATE TABLE IF NOT EXISTS` leaves an existing vault's tables alone. So these
+/// tests go through the commands, because that is the only half that reaches a
+/// vault written before this constraint existed.
+#[tokio::test]
+async fn a_category_name_over_the_limit_is_refused() {
+    let app = unlocked();
+    let db = app.state::<DbConn>();
+
+    let too_long = "a".repeat(CATEGORY_NAME_MAX_CHARS + 1);
+    assert_eq!(
+        categories::add_category(
+            db.clone(),
+            app.state::<Session>(),
+            too_long.clone(),
+            None,
+            None
+        )
+        .unwrap_err(),
+        format!(
+            "Name must be {} characters or fewer",
+            CATEGORY_NAME_MAX_CHARS
+        ),
+    );
+
+    // And nothing was written on the way to the refusal.
+    let stored: i64 =
+        db.0.lock()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM categories", [], |row| row.get(0))
+            .unwrap();
+    assert_eq!(stored, 0);
+
+    // The value at the limit still goes in.
+    assert!(categories::add_category(
+        db,
+        app.state::<Session>(),
+        "a".repeat(CATEGORY_NAME_MAX_CHARS),
+        None,
+        None,
+    )
+    .is_ok());
+}
+
+/// A long icon is the same failure with a different column, and it is the one a
+/// caller is least likely to think about: `icon` is nullable, so the check has to
+/// be on the value rather than the column.
+#[tokio::test]
+async fn a_category_icon_over_the_limit_is_refused() {
+    let app = unlocked();
+    let too_long = "a".repeat(CATEGORY_ICON_MAX_CHARS + 1);
+
+    assert_eq!(
+        categories::add_category(
+            app.state::<DbConn>(),
+            app.state::<Session>(),
+            "n".into(),
+            Some(too_long),
+            None,
+        )
+        .unwrap_err(),
+        format!(
+            "Icon must be {} characters or fewer",
+            CATEGORY_ICON_MAX_CHARS
+        ),
+    );
+}
+
+/// The body bound goes through the same `check_max_chars` as the metadata now
+/// does, which means it is checked in characters like the frontend counts them —
+/// `NOTE_CONTENT_MAX` in `src/lib/consts.ts` is the same 256. Two things are worth
+/// pinning: that the bound still bites, and that it is the *lower* bound that makes
+/// this column different from the metadata ones.
+#[tokio::test]
+async fn a_note_body_is_bounded_on_both_ends() {
+    let app = unlocked();
+    let db = app.state::<DbConn>();
+    let session = app.state::<Session>();
+
+    // Empty is refused: an empty note has never been a valid row, and there is no
+    // legacy vault to protect the way there is for an empty category name.
+    assert_eq!(
+        notes::add_note(
+            db.clone(),
+            session.clone(),
+            "t".into(),
+            "".into(),
+            None,
+            None
+        )
+        .await
+        .unwrap_err(),
+        "Content is required",
+    );
+
+    assert_eq!(
+        notes::add_note(
+            db.clone(),
+            session.clone(),
+            "t".into(),
+            "a".repeat(NOTE_CONTENT_MAX_CHARS + 1),
+            None,
+            None,
+        )
+        .await
+        .unwrap_err(),
+        format!("Content must be {NOTE_CONTENT_MAX_CHARS} characters or fewer"),
+    );
+
+    assert!(notes::add_note(
+        db,
+        session,
+        "t".into(),
+        "a".repeat(NOTE_CONTENT_MAX_CHARS),
+        None,
+        None,
+    )
+    .await
+    .is_ok());
+}
+
+#[tokio::test]
+async fn a_password_username_or_url_over_the_limit_is_refused() {
+    let app = unlocked();
+    let db = app.state::<DbConn>();
+    let session = app.state::<Session>();
+
+    let add = |username: String, url: String| {
+        let db = db.clone();
+        let session = session.clone();
+        async move { passwords::add_password(db, session, username, "p".into(), url, None).await }
+    };
+
+    assert_eq!(
+        add("a".repeat(USERNAME_MAX_CHARS + 1), "u".into())
+            .await
+            .unwrap_err(),
+        format!(
+            "Username must be {} characters or fewer",
+            USERNAME_MAX_CHARS
+        ),
+    );
+    assert_eq!(
+        add("u".into(), "a".repeat(URL_MAX_CHARS + 1))
+            .await
+            .unwrap_err(),
+        format!("URL must be {} characters or fewer", URL_MAX_CHARS),
+    );
+
+    // At the limit on both, the row is written.
+    assert!(
+        add("a".repeat(USERNAME_MAX_CHARS), "a".repeat(URL_MAX_CHARS),)
+            .await
+            .is_ok()
+    );
+}
+
+/// The title is checked on update as well, and there is a second reason to test it
+/// here: `update_note` has two branches, and the one that leaves the body alone is
+/// the one that would otherwise skip a check added only next to the encryption.
+#[tokio::test]
+async fn a_note_title_over_the_limit_is_refused_on_update() {
+    let app = unlocked();
+    let db = app.state::<DbConn>();
+    let session = app.state::<Session>();
+
+    let note = notes::add_note(
+        db.clone(),
+        session.clone(),
+        "t".into(),
+        "body".into(),
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let too_long = "a".repeat(NOTE_TITLE_MAX_CHARS + 1);
+    assert_eq!(
+        notes::update_note(
+            db.clone(),
+            session.clone(),
+            note.id.clone(),
+            too_long,
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap_err(),
+        format!("Title must be {} characters or fewer", NOTE_TITLE_MAX_CHARS),
+    );
+
+    // The metadata-only branch, so the check is not only on the encrypting path.
+    assert!(notes::update_note(
+        db,
+        session,
+        note.id.clone(),
+        "a".repeat(NOTE_TITLE_MAX_CHARS),
+        None,
+        None,
+        None,
+    )
+    .await
+    .is_ok());
+}
+
+/// The bound is in characters, not bytes, so a name written in a script that needs
+/// more than one byte per character is not penalised for its encoding.
+#[tokio::test]
+async fn the_metadata_bounds_count_characters_rather_than_bytes() {
+    let app = unlocked();
+    let db = app.state::<DbConn>();
+    let session = app.state::<Session>();
+
+    // `ñ` is two bytes in UTF-8, so this is twice the limit in bytes and exactly
+    // the limit in characters.
+    let accented = "ñ".repeat(CATEGORY_NAME_MAX_CHARS);
+    assert!(
+        categories::add_category(db.clone(), session.clone(), accented.clone(), None, None).is_ok(),
+        "{} characters must be accepted however many bytes they take",
+        accented.chars().count()
+    );
+
+    assert!(categories::add_category(
+        db,
+        session,
+        "ñ".repeat(CATEGORY_NAME_MAX_CHARS + 1),
+        None,
+        None,
+    )
+    .is_err());
+}
 
 /// The two answers the app routes on, so the empty case is worth pinning in both
 /// directions rather than trusting that `count > 0` was always the shape.
