@@ -114,8 +114,9 @@
       <div class="grid gap-y-1">
         <label for="add-note-category">Category</label>
         <Select
-          id="add-note-category"
           items={categoryItems}
+          id="add-note-category"
+          value={formCategoryId}
           placeholder="No category"
           onValueChange={(v) => (formCategoryId = v)}
         />

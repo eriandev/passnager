@@ -101,6 +101,7 @@
         <label for="edit-pass-category">Category</label>
         <Select
           items={categoryItems}
+          value={formCategoryId}
           id="edit-pass-category"
           placeholder="No category"
           onValueChange={(v) => (formCategoryId = v)}

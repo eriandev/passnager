@@ -22,7 +22,8 @@
 
 <Select.Root value={value ?? ''} {items} type="single" onValueChange={handleChange}>
   <Select.Trigger
-    aria-label={placeholder}
+    {id}
+    aria-label={id ?? placeholder}
     class="inline-flex h-input w-full items-center rounded-9px border border-border-input bg-background px-2.75 text-sm transition-colors placeholder:text-foreground-alt/50 focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:ring-offset-background focus:outline-none"
   >
     {@render icon?.()}

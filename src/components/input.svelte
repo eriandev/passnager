@@ -1,7 +1,15 @@
 <script lang="ts">
   import type { InputProps } from '@/components/types'
 
-  let { value = $bindable(), leftIcon, rightIcon, class: extraClass, ...restProps }: InputProps = $props()
+  let {
+    id,
+    leftIcon,
+    rightIcon,
+    placeholder,
+    class: extraClass,
+    value = $bindable(),
+    ...restProps
+  }: InputProps = $props()
 </script>
 
 <label
@@ -12,10 +20,10 @@
 >
   {@render leftIcon?.()}
   <input
+    {id}
     bind:value
-    class={[
-      'inline-flex h-full w-full text-sm placeholder:text-foreground-alt/50 hover:border-dark-40 focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:ring-offset-background focus:outline-none',
-    ]}
+    aria-label={id ?? placeholder}
+    class="inline-flex h-full w-full text-sm placeholder:text-foreground-alt/50 hover:border-dark-40 focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:ring-offset-background focus:outline-none"
     {...restProps}
   />
   {@render rightIcon?.()}

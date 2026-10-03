@@ -108,6 +108,7 @@
         <label for="edit-note-category">Category</label>
         <Select
           items={categoryItems}
+          value={formCategoryId}
           id="edit-note-category"
           placeholder="No category"
           onValueChange={(v) => (formCategoryId = v)}
