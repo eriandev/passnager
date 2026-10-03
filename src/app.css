@@ -269,7 +269,7 @@
 
   ::selection {
     color: black;
-    background: #fdffa4;
+    background: hsl(174 72% 56%);
   }
 }
 
