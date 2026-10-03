@@ -46,7 +46,7 @@ pub async fn add_note(
 
     conn.execute(
         "INSERT INTO notes (id, title, encrypted_content, nonce, color, category_id, created_at, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         rusqlite::params![id, title, encrypted, nonce, color, category_id, now, now],
     )
     .map_err(|e| e.to_string())?;
@@ -124,7 +124,7 @@ pub async fn update_note(
 
             conn.execute(
                 "UPDATE notes SET title = ?1, encrypted_content = ?2, nonce = ?3, color = ?4, \
-                 category_id = ?5, updated_at = ?6 WHERE id = ?7",
+                category_id = ?5, updated_at = ?6 WHERE id = ?7",
                 rusqlite::params![title, encrypted, nonce, color, category_id, now, id],
             )
             .map_err(|e| e.to_string())?;
@@ -132,7 +132,7 @@ pub async fn update_note(
         None => {
             conn.execute(
                 "UPDATE notes SET title = ?1, color = ?2, category_id = ?3, updated_at = ?4 \
-                 WHERE id = ?5",
+                WHERE id = ?5",
                 rusqlite::params![title, color, category_id, now, id],
             )
             .map_err(|e| e.to_string())?;

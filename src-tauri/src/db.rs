@@ -278,7 +278,7 @@ mod tests {
     fn insert_note(conn: &Connection, id: &str, body: &[u8], color: Option<&str>) -> SqlResult<()> {
         conn.execute(
             "INSERT INTO notes (id, title, encrypted_content, nonce, color, created_at, updated_at) \
-             VALUES (?1, 't', ?2, zeroblob(12), ?3, '1', '1')",
+            VALUES (?1, 't', ?2, zeroblob(12), ?3, '1', '1')",
             rusqlite::params![id, body, color],
         )
         .map(|_| ())
@@ -307,7 +307,7 @@ mod tests {
     ) -> SqlResult<usize> {
         conn.execute(
             "INSERT INTO master_password (id, salt, wrapped_dek, dek_nonce) \
-             VALUES (1, ?1, ?2, ?3)",
+            VALUES (1, ?1, ?2, ?3)",
             rusqlite::params![salt, wrapped_dek, dek_nonce],
         )
     }
@@ -315,7 +315,7 @@ mod tests {
     fn insert_password(conn: &Connection, id: &str, nonce: &[u8]) -> SqlResult<usize> {
         conn.execute(
             "INSERT INTO passwords (id, username, encrypted_password, nonce, url, created_at, updated_at) \
-             VALUES (?1, 'u', x'00', ?2, 'https://example.test', '1', '1')",
+            VALUES (?1, 'u', x'00', ?2, 'https://example.test', '1', '1')",
             rusqlite::params![id, nonce],
         )
     }
@@ -367,19 +367,19 @@ mod tests {
                 "passwords.username",
                 USERNAME_MAX_CHARS,
                 "INSERT INTO passwords (id, username, encrypted_password, nonce, url, created_at, updated_at) \
-                 VALUES (?1, ?2, zeroblob(17), zeroblob(12), 'u', '1', '1')",
+                VALUES (?1, ?2, zeroblob(17), zeroblob(12), 'u', '1', '1')",
             ),
             (
                 "passwords.url",
                 URL_MAX_CHARS,
                 "INSERT INTO passwords (id, username, encrypted_password, nonce, url, created_at, updated_at) \
-                 VALUES (?1, 'u', zeroblob(17), zeroblob(12), ?2, '1', '1')",
+                VALUES (?1, 'u', zeroblob(17), zeroblob(12), ?2, '1', '1')",
             ),
             (
                 "notes.title",
                 NOTE_TITLE_MAX_CHARS,
                 "INSERT INTO notes (id, title, encrypted_content, nonce, created_at, updated_at) \
-                 VALUES (?1, ?2, zeroblob(17), zeroblob(12), '1', '1')",
+                VALUES (?1, ?2, zeroblob(17), zeroblob(12), '1', '1')",
             ),
         ];
 
@@ -427,7 +427,7 @@ mod tests {
         let conn = in_memory();
         conn.execute(
             "INSERT INTO passwords (id, username, encrypted_password, nonce, url, created_at, updated_at) \
-             VALUES ('p', 'u', ?1, zeroblob(12), 'u', '1', '1')",
+            VALUES ('p', 'u', ?1, zeroblob(12), 'u', '1', '1')",
             rusqlite::params![vec![0u8; 1 << 20]],
         )
         .expect("nothing caps this column yet");
@@ -508,7 +508,7 @@ mod tests {
             assert!(
                 conn.execute(
                     "INSERT INTO notes (id, title, encrypted_content, nonce, created_at, updated_at) \
-                     VALUES (?1, 't', ?2, ?3, '1', '1')",
+                    VALUES (?1, 't', ?2, ?3, '1', '1')",
                     rusqlite::params![id, vec![0u8; 1 + TAG_LEN], vec![0u8; bad]],
                 )
                 .is_err(),
@@ -625,7 +625,7 @@ mod tests {
         insert_category(&conn, "c1", None).unwrap();
         conn.execute(
             "INSERT INTO notes (id, title, encrypted_content, nonce, category_id, created_at, updated_at) \
-             VALUES ('n2', 't', ?1, zeroblob(12), 'c1', '1', '1')",
+            VALUES ('n2', 't', ?1, zeroblob(12), 'c1', '1', '1')",
             [vec![0u8; 1 + TAG_LEN]],
         )
         .unwrap();

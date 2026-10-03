@@ -73,11 +73,11 @@ pub fn init_logging(app: &AppHandle) {
 pub fn log_startup_failure(app: &AppHandle, message: &str) {
     log_error!(
         "STARTUP ABORTED: {message}\n  \
-         vault: {}\n  \
-         No password, note or category was read or written, and the app stopped \
-         before it could reach them. The vault itself has not been altered.\n  \
-         Do not delete it to get past the problem. Copy it somewhere safe first, \
-         then act on the reason above.",
+        vault: {}\n  \
+        No password, note or category was read or written, and the app stopped \
+        before it could reach them. The vault itself has not been altered.\n  \
+        Do not delete it to get past the problem. Copy it somewhere safe first, \
+        then act on the reason above.",
         db_file_display(app)
     );
 }
