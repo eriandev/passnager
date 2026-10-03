@@ -28,6 +28,10 @@
   let editingEntry = $state<EntryPasswordProps | null>(null)
 
   const searchTerm = $derived(query.trim().toLocaleLowerCase())
+  const categoryItems = $derived([
+    { label: 'All categories', value: '' },
+    ...categories.list.map((c) => ({ label: categoryLabel(c), value: c.id })),
+  ])
   const filtered = $derived(
     searchTerm
       ? passwords.list.filter(
@@ -107,14 +111,7 @@
       <Input bind:value={query} placeholder="Search by username or URL" />
     </div>
     <div class="w-52 shrink-0">
-      <Select
-        placeholder="All categories"
-        items={[
-          { label: 'All categories', value: '' },
-          ...categories.list.map((c) => ({ label: categoryLabel(c), value: c.id })),
-        ]}
-        onValueChange={(v) => (filterCategory = v)}
-      />
+      <Select items={categoryItems} placeholder="All categories" onValueChange={(v) => (filterCategory = v)} />
     </div>
   </section>
 

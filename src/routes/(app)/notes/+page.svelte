@@ -28,6 +28,10 @@
   let editingEntry = $state<EntryNoteProps | null>(null)
 
   const searchTerm = $derived(query.trim().toLocaleLowerCase())
+  const categoryItems = $derived([
+    { label: 'All categories', value: '' },
+    ...categories.list.map((c) => ({ label: categoryLabel(c), value: c.id })),
+  ])
   const filtered = $derived(
     searchTerm ? notes.list.filter((entry) => entry.title.toLocaleLowerCase().includes(searchTerm)) : notes.list,
   )
@@ -103,14 +107,7 @@
       <Input bind:value={query} placeholder="Search by title" />
     </div>
     <div class="w-52 shrink-0">
-      <Select
-        placeholder="All categories"
-        items={[
-          { label: 'All categories', value: '' },
-          ...categories.list.map((c) => ({ label: categoryLabel(c), value: c.id })),
-        ]}
-        onValueChange={(v) => (filterCategory = v)}
-      />
+      <Select items={categoryItems} placeholder="All categories" onValueChange={(v) => (filterCategory = v)} />
     </div>
   </section>
 
