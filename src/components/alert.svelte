@@ -24,9 +24,9 @@
         {/if}
       </section>
       <section class="flex w-full items-center justify-center gap-2">
-        {#each actions as { label, variant = 'secondary', action }, i (label + i)}
+        {#each actions as { label, variant = 'secondary', action, disabled = false }, i (label + i)}
           {#if action}
-            <AlertDialog.Action class={['btn', variant]} onclick={action}>{label}</AlertDialog.Action>
+            <AlertDialog.Action class={['btn', variant]} {disabled} onclick={action}>{label}</AlertDialog.Action>
           {:else}
             <AlertDialog.Cancel class={['btn', variant]}>{label}</AlertDialog.Cancel>
           {/if}

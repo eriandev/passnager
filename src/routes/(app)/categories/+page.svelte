@@ -13,6 +13,7 @@
   const auth = useAuth()
   const categories = useCategories()
 
+  let deleting = $state(false)
   let deleteTargetId = $state('')
   let showAddModal = $state(false)
   let showEditModal = $state(false)
@@ -42,12 +43,25 @@
   }
 
   async function handleDelete() {
+    if (!deleteTargetId || deleting) return
+
+    // The id is read into a local before the await. Reading it afterwards would
+    // pick up whatever the dialog was pointed at in the meantime, so the row that
+    // got deleted and the row that was confirmed could be two different rows.
+    const id = deleteTargetId
+    deleting = true
+
     try {
-      await categories.remove(deleteTargetId)
+      await categories.remove(id)
+      // Only once the row is gone: while it is still there, a second confirm would
+      // be a second request against the same row.
+      deleteTargetId = ''
       toast.success('Category deleted')
       showDeleteAlert = false
     } catch {
       toast.error('Failed to delete category')
+    } finally {
+      deleting = false
     }
   }
 </script>
@@ -93,6 +107,7 @@
     {
       label: 'Delete',
       variant: 'danger',
+      disabled: deleting,
       action: handleDelete,
     },
   ]}

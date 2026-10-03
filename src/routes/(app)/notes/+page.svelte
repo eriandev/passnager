@@ -19,6 +19,7 @@
   const categories = useCategories()
 
   let query = $state('')
+  let deleting = $state(false)
   let filterCategory = $state('')
   let deleteTargetId = $state('')
   let showAddModal = $state(false)
@@ -69,13 +70,25 @@
   }
 
   async function handleDelete() {
-    if (!deleteTargetId) return
+    if (!deleteTargetId || deleting) return
+
+    // The id is read into a local before the await. Reading it afterwards would
+    // pick up whatever the dialog was pointed at in the meantime, so the row that
+    // got deleted and the row that was confirmed could be two different rows.
+    const id = deleteTargetId
+    deleting = true
+
     try {
-      await notes.remove(deleteTargetId)
+      await notes.remove(id)
+      // Only once the row is gone: while it is still there, a second confirm would
+      // be a second request against the same row.
+      deleteTargetId = ''
       toast.success('Note deleted')
       showDeleteAlert = false
     } catch {
       toast.error('Failed to delete note')
+    } finally {
+      deleting = false
     }
   }
 </script>
@@ -145,6 +158,7 @@
     {
       label: 'Delete',
       variant: 'danger',
+      disabled: deleting,
       action: handleDelete,
     },
   ]}

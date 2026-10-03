@@ -16,6 +16,7 @@ export interface AlertProps {
   description?: string[]
   actions: Array<{
     label: string
+    disabled?: boolean
     variant?: ButtonProps['variant']
     action?: () => void
   }>
