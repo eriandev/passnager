@@ -20,8 +20,7 @@
     "tauri:build:windows": "tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.11.1",
-    "@tauri-apps/plugin-opener": "2.5.5"
+    "@tauri-apps/api": "2.11.1"
   },
   "devDependencies": {
     "@eslint/compat": "2.1.1",
