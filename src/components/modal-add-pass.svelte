@@ -5,6 +5,7 @@
   import Modal from '@/components/modal.svelte'
   import Select from '@/components/select.svelte'
   import { categoryLabel } from '$lib/category.svelte'
+  import { URL_MAX_CHARS, USERNAME_MAX_CHARS } from '$lib/consts'
   import type { ModalAddPasswordProps } from '@/components/types'
 
   let { open = $bindable(false), onadd, categories }: ModalAddPasswordProps = $props()
@@ -44,8 +45,16 @@
       formError = 'Password is required'
       return
     }
+    if (Array.from(formUsername).length > USERNAME_MAX_CHARS) {
+      formError = `Username must be ${USERNAME_MAX_CHARS} characters or fewer`
+      return
+    }
     if (!formUrl.trim()) {
       formError = 'URL is required'
+      return
+    }
+    if (Array.from(formUrl).length > URL_MAX_CHARS) {
+      formError = `URL must be ${URL_MAX_CHARS} characters or fewer`
       return
     }
 

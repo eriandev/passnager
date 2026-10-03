@@ -3,8 +3,8 @@
   import { AlertDialog } from 'bits-ui'
   import Input from '@/components/input.svelte'
   import Modal from '@/components/modal.svelte'
-  import { CATEGORY_DEFAULT_COLOR, CATEGORY_ICONS } from '$lib/consts'
   import ColorPicker from '@/components/color-picker.svelte'
+  import { CATEGORY_DEFAULT_COLOR, CATEGORY_ICON_MAX_CHARS, CATEGORY_NAME_MAX_CHARS, CATEGORY_ICONS } from '$lib/consts'
   import type { ModalAddCategoryProps } from '@/components/types'
 
   let { open = $bindable(false), onadd }: ModalAddCategoryProps = $props()
@@ -32,6 +32,14 @@
 
     if (!formName.trim()) {
       formError = 'Name is required'
+      return
+    }
+    if (Array.from(formName).length > CATEGORY_NAME_MAX_CHARS) {
+      formError = `Name must be ${CATEGORY_NAME_MAX_CHARS} characters or fewer`
+      return
+    }
+    if (formIcon && Array.from(formIcon).length > CATEGORY_ICON_MAX_CHARS) {
+      formError = `Icon must be ${CATEGORY_ICON_MAX_CHARS} characters or fewer`
       return
     }
 

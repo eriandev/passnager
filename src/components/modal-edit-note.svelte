@@ -5,9 +5,9 @@
   import Modal from '@/components/modal.svelte'
   import Select from '@/components/select.svelte'
   import Textarea from '@/components/textarea.svelte'
-  import ColorPicker from '@/components/color-picker.svelte'
-  import { NOTE_CONTENT_MAX, NOTE_DEFAULT_COLOR } from '$lib/consts'
   import { categoryLabel } from '$lib/category.svelte'
+  import ColorPicker from '@/components/color-picker.svelte'
+  import { NOTE_CONTENT_MAX_CHARS, NOTE_DEFAULT_COLOR, NOTE_TITLE_MAX_CHARS } from '$lib/consts'
   import type { ModalEditNoteProps } from '@/components/types'
 
   let { open = $bindable(false), entry = null, onupdate, categories }: ModalEditNoteProps = $props()
@@ -19,8 +19,8 @@
   let formColor = $state(NOTE_DEFAULT_COLOR)
   let formCategoryId = $state<string | null>(null)
 
-  const contentLength = $derived([...formContent].length)
-  const contentTooLong = $derived(contentLength > NOTE_CONTENT_MAX)
+  const contentLength = $derived(Array.from(formContent).length)
+  const contentTooLong = $derived(contentLength > NOTE_CONTENT_MAX_CHARS)
 
   const categoryItems = $derived([
     { label: 'No category', value: '' },
@@ -48,8 +48,12 @@
       formError = 'Title is required'
       return
     }
+    if (Array.from(formTitle).length > NOTE_TITLE_MAX_CHARS) {
+      formError = `Title must be ${NOTE_TITLE_MAX_CHARS} characters or fewer`
+      return
+    }
     if (contentTooLong) {
-      formError = `Content must be ${NOTE_CONTENT_MAX} characters or fewer`
+      formError = `Content must be ${NOTE_CONTENT_MAX_CHARS} characters or fewer`
       return
     }
 
@@ -83,7 +87,7 @@
         <div class="flex items-center justify-between">
           <label for="edit-note-content">New content (leave empty to keep current)</label>
           <span class={['text-xs font-normal', contentTooLong ? 'text-destructive' : 'text-foreground-alt']}>
-            {contentLength}/{NOTE_CONTENT_MAX}
+            {contentLength}/{NOTE_CONTENT_MAX_CHARS}
           </span>
         </div>
         <Textarea

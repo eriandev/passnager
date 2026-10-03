@@ -2,7 +2,7 @@
   import { toast } from 'svelte-sonner'
   import { useAuth } from '$lib/auth.svelte'
   import Button from '@/components/button.svelte'
-  import { PASSWORD_MIN_LENGTH } from '@/lib/consts'
+  import { PASSWORD_MIN_CHARS } from '@/lib/consts'
   import LockKey from 'phosphor-svelte/lib/LockKeyIcon'
   import { useNavigation } from '$lib/navigation.svelte'
   import PasswordInput from '@/components/password-input.svelte'
@@ -24,8 +24,8 @@
     // `setup_master_password`, and surface as "Failed to configure master
     // password". `Array.from` walks code points, which is what Rust's `chars()`
     // counts on the other side.
-    if (Array.from(password).length < PASSWORD_MIN_LENGTH) {
-      error = `Password must be at least ${PASSWORD_MIN_LENGTH} characters`
+    if (Array.from(password).length < PASSWORD_MIN_CHARS) {
+      error = `Password must be at least ${PASSWORD_MIN_CHARS} characters`
       return
     }
 
@@ -70,7 +70,7 @@
             id="new-password"
             autocomplete="off"
             bind:value={password}
-            placeholder="At least {PASSWORD_MIN_LENGTH} characters"
+            placeholder="At least {PASSWORD_MIN_CHARS} characters"
             disabled={loading}
           />
 

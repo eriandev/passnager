@@ -5,9 +5,9 @@
   import Modal from '@/components/modal.svelte'
   import Select from '@/components/select.svelte'
   import Textarea from '@/components/textarea.svelte'
-  import ColorPicker from '@/components/color-picker.svelte'
-  import { NOTE_CONTENT_MAX, NOTE_DEFAULT_COLOR } from '$lib/consts'
   import { categoryLabel } from '$lib/category.svelte'
+  import ColorPicker from '@/components/color-picker.svelte'
+  import { NOTE_CONTENT_MAX_CHARS, NOTE_DEFAULT_COLOR, NOTE_TITLE_MAX_CHARS } from '$lib/consts'
   import type { ModalAddNoteProps } from '@/components/types'
 
   let { open = $bindable(false), onadd, categories }: ModalAddNoteProps = $props()
@@ -19,8 +19,8 @@
   let formColor = $state(NOTE_DEFAULT_COLOR)
   let formCategoryId = $state<string | null>(null)
 
-  const contentLength = $derived([...formContent].length)
-  const contentTooLong = $derived(contentLength > NOTE_CONTENT_MAX)
+  const contentLength = $derived(Array.from(formContent).length)
+  const contentTooLong = $derived(contentLength > NOTE_CONTENT_MAX_CHARS)
 
   const categoryItems = $derived([
     { label: 'No category', value: '' },
@@ -47,12 +47,20 @@
       formError = 'Title is required'
       return
     }
+    if (Array.from(formTitle).length > NOTE_TITLE_MAX_CHARS) {
+      formError = `Title must be ${NOTE_TITLE_MAX_CHARS} characters or fewer`
+      return
+    }
     if (!formContent.trim()) {
       formError = 'Content is required'
       return
     }
+    if (Array.from(formContent).length > NOTE_CONTENT_MAX_CHARS) {
+      formError = `Content must be ${NOTE_CONTENT_MAX_CHARS} characters or fewer`
+      return
+    }
     if (contentTooLong) {
-      formError = `Content must be ${NOTE_CONTENT_MAX} characters or fewer`
+      formError = `Content must be ${NOTE_CONTENT_MAX_CHARS} characters or fewer`
       return
     }
 
@@ -86,7 +94,7 @@
         <div class="flex items-center justify-between">
           <label for="add-note-content">Content</label>
           <span class={['text-xs font-normal', contentTooLong ? 'text-destructive' : 'text-foreground-alt']}>
-            {contentLength}/{NOTE_CONTENT_MAX}
+            {contentLength}/{NOTE_CONTENT_MAX_CHARS}
           </span>
         </div>
         <Textarea
