@@ -9,7 +9,7 @@
   import Button from '@/components/button.svelte'
   import Select from '@/components/select.svelte'
   import CardNote from '@/components/card-note.svelte'
-  import { useCategories } from '$lib/category.svelte'
+  import { categoryLabel, useCategories } from '$lib/category.svelte'
   import ModalAddNote from '@/components/modal-add-note.svelte'
   import ModalEditNote from '@/components/modal-edit-note.svelte'
   import type { EntryNoteProps } from '$lib/types'
@@ -95,7 +95,7 @@
         placeholder="All categories"
         items={[
           { label: 'All categories', value: '' },
-          ...categories.list.map((c) => ({ label: c.icon + ' ' + c.name, value: c.id })),
+          ...categories.list.map((c) => ({ label: categoryLabel(c), value: c.id })),
         ]}
         onValueChange={(v) => (filterCategory = v ?? '')}
       />

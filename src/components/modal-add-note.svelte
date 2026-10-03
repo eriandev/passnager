@@ -7,6 +7,7 @@
   import Textarea from '@/components/textarea.svelte'
   import ColorPicker from '@/components/color-picker.svelte'
   import { NOTE_CONTENT_MAX, NOTE_DEFAULT_COLOR } from '$lib/consts'
+  import { categoryLabel } from '$lib/category.svelte'
   import type { ModalAddNoteProps } from '@/components/types'
 
   let { open = $bindable(false), onadd, categories }: ModalAddNoteProps = $props()
@@ -23,7 +24,7 @@
 
   const categoryItems = $derived([
     { label: 'No category', value: '' },
-    ...categories.map((cate) => ({ label: cate.icon + ' ' + cate.name, value: cate.id })),
+    ...categories.map((cate) => ({ label: categoryLabel(cate), value: cate.id })),
   ])
 
   $effect(() => {

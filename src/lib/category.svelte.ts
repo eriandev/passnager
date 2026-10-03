@@ -1,11 +1,14 @@
 import { invoke } from '@tauri-apps/api/core'
-import { CATEGORY_DEFAULT_ICON } from '$lib/consts'
 import type { EntryCategoryData, EntryCategoryProps } from '$lib/types'
 
 let loading = $state(true)
 let list = $state<EntryCategoryProps[]>([])
 
 const byName = (a: EntryCategoryProps, b: EntryCategoryProps) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+
+export function categoryLabel(category: Pick<EntryCategoryProps, 'icon' | 'name'>): string {
+  return category.icon ? `${category.icon} ${category.name}` : category.name
+}
 
 export function useCategories() {
   const load = async () => {
@@ -23,7 +26,7 @@ export function useCategories() {
   const add = async (data: EntryCategoryData) => {
     const entry = await invoke<EntryCategoryProps>('add_category', {
       name: data.name,
-      icon: data.icon || CATEGORY_DEFAULT_ICON,
+      icon: data.icon,
       color: data.color ?? null,
     })
     list = [...list, entry].sort(byName)
@@ -33,14 +36,12 @@ export function useCategories() {
     await invoke('update_category', {
       id,
       name: data.name,
-      icon: data.icon || CATEGORY_DEFAULT_ICON,
+      icon: data.icon,
       color: data.color ?? null,
     })
     list = list
       .map((entry) =>
-        entry.id === id
-          ? { ...entry, name: data.name, icon: data.icon || CATEGORY_DEFAULT_ICON, color: data.color ?? null }
-          : entry,
+        entry.id === id ? { ...entry, name: data.name, icon: data.icon, color: data.color ?? null } : entry,
       )
       .sort(byName)
   }

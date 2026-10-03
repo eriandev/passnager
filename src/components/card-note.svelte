@@ -5,6 +5,7 @@
   import PencilSimple from 'phosphor-svelte/lib/PencilSimpleIcon'
   import CardAction from '@/components/card-action.svelte'
   import { NOTE_DEFAULT_COLOR } from '$lib/consts'
+  import { categoryLabel } from '$lib/category.svelte'
   import type { CardNoteProps } from '@/components/types'
 
   const actions = [
@@ -46,7 +47,7 @@
       <span class="truncate text-sm font-medium text-foreground">{entry.title}</span>
       {#if category}
         <span class="shrink-0 text-xs text-foreground-alt">
-          {category.icon ? category.icon + ' ' : ''}{category.name}
+          {categoryLabel(category)}
         </span>
       {/if}
     </div>

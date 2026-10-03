@@ -3,23 +3,23 @@
   import { AlertDialog } from 'bits-ui'
   import Input from '@/components/input.svelte'
   import Modal from '@/components/modal.svelte'
-  import { CATEGORY_DEFAULT_COLOR, CATEGORY_DEFAULT_ICON, CATEGORY_ICONS } from '$lib/consts'
+  import { CATEGORY_DEFAULT_COLOR, CATEGORY_ICONS } from '$lib/consts'
   import ColorPicker from '@/components/color-picker.svelte'
   import type { ModalAddCategoryProps } from '@/components/types'
 
   let { open = $bindable(false), onadd }: ModalAddCategoryProps = $props()
 
   let formName = $state('')
-  let formIcon = $state(CATEGORY_DEFAULT_ICON)
   let formError = $state('')
   let submitting = $state(false)
+  let formIcon = $state<string | null>(null)
   let formColor = $state(CATEGORY_DEFAULT_COLOR)
 
   $effect(() => {
     if (open) {
       formName = ''
-      formIcon = CATEGORY_DEFAULT_ICON
       formError = ''
+      formIcon = null
       formColor = CATEGORY_DEFAULT_COLOR
     }
   })

@@ -8,7 +8,7 @@
   import Button from '@/components/button.svelte'
   import Select from '@/components/select.svelte'
   import { usePasswords } from '$lib/password.svelte'
-  import { useCategories } from '$lib/category.svelte'
+  import { categoryLabel, useCategories } from '$lib/category.svelte'
   import CardPassword from '@/components/card-password.svelte'
   import ModalAddPass from '@/components/modal-add-pass.svelte'
   import ModalEditPass from '@/components/modal-edit-pass.svelte'
@@ -99,7 +99,7 @@
         placeholder="All categories"
         items={[
           { label: 'All categories', value: '' },
-          ...categories.list.map((c) => ({ label: c.icon + ' ' + c.name, value: c.id })),
+          ...categories.list.map((c) => ({ label: categoryLabel(c), value: c.id })),
         ]}
         onValueChange={(v) => (filterCategory = v ?? '')}
       />

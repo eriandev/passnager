@@ -4,6 +4,7 @@
   import Input from '@/components/input.svelte'
   import Modal from '@/components/modal.svelte'
   import Select from '@/components/select.svelte'
+  import { categoryLabel } from '$lib/category.svelte'
   import type { ModalAddPasswordProps } from '@/components/types'
 
   let { open = $bindable(false), onadd, categories }: ModalAddPasswordProps = $props()
@@ -17,7 +18,7 @@
 
   const categoryItems = $derived([
     { label: 'No category', value: '' },
-    ...categories.map((cate) => ({ label: cate.icon + ' ' + cate.name, value: cate.id })),
+    ...categories.map((cate) => ({ label: categoryLabel(cate), value: cate.id })),
   ])
   $effect(() => {
     if (open) {

@@ -16,7 +16,7 @@ export interface EntryPasswordProps extends EntryProps {
 }
 export interface EntryCategoryData {
   name: string
-  icon?: string | null
+  icon: string | null
   color?: string | null
 }
 export interface EntryCategoryProps {
@@ -27,8 +27,8 @@ export interface EntryCategoryProps {
 }
 export interface EntryNoteData {
   title: string
-  content?: string | null
   color?: string | null
+  content?: string | null
   categoryId?: string | null
 }
 export interface EntryNoteProps extends EntryProps {
