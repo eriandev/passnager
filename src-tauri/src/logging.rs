@@ -79,7 +79,8 @@ pub fn set_file(path: impl Into<PathBuf>) -> std::io::Result<()> {
 /// file be renamed, dated, or moved into a `logs/` subdirectory later without
 /// reaching the callers.
 pub fn set_dir(dir: impl Into<PathBuf>) -> std::io::Result<()> {
-    set_file(PathBuf::from(dir.into()).join(DEFAULT_FILE))
+    let dir: PathBuf = dir.into();
+    set_file(dir.join(DEFAULT_FILE))
 }
 
 /// The file the logger is currently writing to.
